@@ -5,11 +5,13 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 
 const { abrirBanco, CATEGORIAS } = require('./db');
+const { criarIa } = require('./ia');
 const criarRotasPublicas = require('./routes/publico');
 const criarRotasAdmin = require('./routes/admin');
 
 function criarApp(opcoes = {}) {
   const db = opcoes.db || abrirBanco(opcoes.caminhoBanco);
+  const ia = opcoes.ia || criarIa();
   const adminSenha = opcoes.adminSenha ?? process.env.ADMIN_PASSWORD ?? '';
   const segredo = opcoes.segredo ?? process.env.SESSION_SECRET ?? adminSenha ?? 'troque-este-segredo';
 
@@ -29,6 +31,7 @@ function criarApp(opcoes = {}) {
     res.locals.categorias = CATEGORIAS;
     res.locals.caminho = req.originalUrl;
     res.locals.admin = false;
+    res.locals.iaAtiva = ia.ativo;
     res.locals.rotulos = ROTULOS;
     res.locals.formatarData = formatarData;
     res.locals.linkWhatsapp = linkWhatsapp;
@@ -40,8 +43,9 @@ function criarApp(opcoes = {}) {
     next();
   });
 
-  app.use('/', criarRotasPublicas(db));
-  app.use('/admin', criarRotasAdmin(db, { senha: adminSenha, segredo }));
+  app.get('/health', (req, res) => res.json({ ok: true }));
+  app.use('/', criarRotasPublicas(db, ia));
+  app.use('/admin', criarRotasAdmin(db, { senha: adminSenha, segredo, ia }));
 
   app.use((req, res) => {
     res.status(404).render('erro', { titulo: 'Página não encontrada', mensagem: 'Essa página não existe.' });
@@ -93,6 +97,9 @@ if (require.main === module) {
   const porta = Number(process.env.PORT || 3000);
   if (!process.env.ADMIN_PASSWORD) {
     console.warn('AVISO: ADMIN_PASSWORD não definida. O painel /admin ficará bloqueado até você definir essa variável.');
+  }
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.warn('AVISO: ANTHROPIC_API_KEY não definida. As sugestões de repasse por IA ficarão desativadas.');
   }
   const app = criarApp();
   app.listen(porta, () => {

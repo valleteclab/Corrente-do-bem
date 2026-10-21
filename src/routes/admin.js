@@ -23,9 +23,15 @@ function senhasIguais(a, b) {
   return crypto.timingSafeEqual(ha, hb);
 }
 
-module.exports = function criarRotasAdmin(db, { senha }) {
+module.exports = function criarRotasAdmin(db, { senha, ia }) {
   const router = express.Router();
   const painelAtivo = Boolean(senha);
+
+  /** Anexa as sugestões da IA (pedidos abertos) a cada oferta da lista. */
+  function comSugestoes(ofertas) {
+    const mapa = db.ofertas.sugestoesIa(ofertas.map((o) => o.id));
+    return ofertas.map((o) => ({ ...o, sugestoes: mapa[o.id] || [] }));
+  }
 
   // Limita tentativas de login por IP (bem simples, em memória).
   const tentativas = new Map();
@@ -71,9 +77,47 @@ module.exports = function criarRotasAdmin(db, { senha }) {
     res.render('admin/dashboard', {
       titulo: 'Painel',
       stats: db.estatisticas(),
-      ofertasNovas: db.ofertas.listar({ status: 'nova' }).slice(0, 8),
-      ofertasDisponiveis: db.ofertas.listar({ status: 'disponivel' }).slice(0, 8),
+      ofertasNovas: comSugestoes(db.ofertas.listar({ status: 'nova' }).slice(0, 8)),
+      ofertasDisponiveis: comSugestoes(db.ofertas.listar({ status: 'disponivel' }).slice(0, 8)),
+      pendentesIa: db.ofertas.idsParaAnalise().length,
     });
+  });
+
+  // ----- IA -----
+  router.post('/ia/analisar', async (req, res, next) => {
+    if (!ia.ativo) {
+      res.locals.setFlash('erro', 'IA desativada. Defina ANTHROPIC_API_KEY no servidor.');
+      return res.redirect(req.body.voltar || '/admin');
+    }
+    try {
+      const ids = db.ofertas.idsParaAnalise({ todas: req.body.todas === '1' });
+      if (!ids.length) {
+        res.locals.setFlash('ok', 'Nenhuma oferta pendente de análise.');
+      } else {
+        const r = await ia.analisarLote(db, ids);
+        res.locals.setFlash(r.erros ? 'erro' : 'ok', `IA analisou ${r.ok} oferta(s)${r.erros ? `, ${r.erros} com erro` : ''}.`);
+      }
+      res.redirect(req.body.voltar || '/admin/ofertas');
+    } catch (e) { next(e); }
+  });
+
+  router.post('/ofertas/:id/ia', async (req, res, next) => {
+    const id = idDe(req.params.id);
+    if (!ia.ativo) {
+      res.locals.setFlash('erro', 'IA desativada. Defina ANTHROPIC_API_KEY no servidor.');
+      return res.redirect(req.body.voltar || '/admin/ofertas');
+    }
+    try {
+      const analise = id ? await ia.analisarEAplicar(db, id) : null;
+      if (analise) {
+        res.locals.setFlash('ok', analise.sugestoes.length
+          ? `IA encontrou ${analise.sugestoes.length} pedido(s) que essa doação pode atender.`
+          : 'IA analisou a oferta, mas não encontrou pedido compatível por enquanto.');
+      }
+    } catch (e) {
+      res.locals.setFlash('erro', `IA: ${e.message}`);
+    }
+    res.redirect(req.body.voltar || '/admin/ofertas');
   });
 
   // ----- necessidades -----
@@ -131,10 +175,11 @@ module.exports = function criarRotasAdmin(db, { senha }) {
     const status = STATUS_OFERTA.includes(req.query.status) ? req.query.status : '';
     res.render('admin/ofertas', {
       titulo: 'Ofertas de doação',
-      ofertas: db.ofertas.listar(status ? { status } : {}),
+      ofertas: comSugestoes(db.ofertas.listar(status ? { status } : {})),
       statusFiltro: status,
       statusLista: STATUS_OFERTA,
       pedidosAbertos: db.pedidos.listar({ status: 'aberto' }),
+      pendentesIa: db.ofertas.idsParaAnalise().length,
     });
   });
 

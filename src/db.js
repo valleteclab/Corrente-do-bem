@@ -65,6 +65,16 @@ CREATE TABLE IF NOT EXISTS ofertas (
   atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS sugestoes_ia (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  oferta_id INTEGER NOT NULL REFERENCES ofertas(id) ON DELETE CASCADE,
+  pedido_id INTEGER NOT NULL REFERENCES pedidos(id) ON DELETE CASCADE,
+  pontuacao INTEGER NOT NULL DEFAULT 0,
+  motivo TEXT NOT NULL DEFAULT '',
+  criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_sugestoes_oferta ON sugestoes_ia(oferta_id);
 CREATE INDEX IF NOT EXISTS idx_ofertas_status ON ofertas(status);
 CREATE INDEX IF NOT EXISTS idx_ofertas_necessidade ON ofertas(necessidade_id);
 CREATE INDEX IF NOT EXISTS idx_ofertas_pedido ON ofertas(pedido_id);
@@ -91,6 +101,7 @@ function abrirBanco(caminho) {
   db.exec('PRAGMA journal_mode = WAL;');
   db.exec('PRAGMA foreign_keys = ON;');
   db.exec(SCHEMA);
+  migrar(db);
 
   const inserirConfig = db.prepare('INSERT OR IGNORE INTO config (chave, valor) VALUES (?, ?)');
   for (const [chave, valor] of Object.entries(CONFIG_PADRAO)) {
@@ -98,6 +109,13 @@ function abrirBanco(caminho) {
   }
 
   return criarRepositorio(db);
+}
+
+/** Adiciona colunas novas em bancos criados por versões anteriores. */
+function migrar(db) {
+  const colunas = new Set(db.prepare('PRAGMA table_info(ofertas)').all().map((c) => c.name));
+  if (!colunas.has('analise_ia')) db.exec("ALTER TABLE ofertas ADD COLUMN analise_ia TEXT NOT NULL DEFAULT ''");
+  if (!colunas.has('ia_analisada_em')) db.exec('ALTER TABLE ofertas ADD COLUMN ia_analisada_em TEXT');
 }
 
 function criarRepositorio(db) {
@@ -273,6 +291,40 @@ function criarRepositorio(db) {
         }
         db.exec('COMMIT');
       } catch (e) { db.exec('ROLLBACK'); throw e; }
+    },
+    vincularNecessidade(id, necessidadeId) {
+      db.prepare('UPDATE ofertas SET necessidade_id = ?, atualizado_em = ? WHERE id = ?').run(necessidadeId, agora(), id);
+    },
+    /** Grava o resultado da análise da IA (resumo + sugestões de repasse), substituindo a anterior. */
+    salvarAnaliseIa(id, { resumo = '', sugestoes = [] }) {
+      db.exec('BEGIN');
+      try {
+        db.prepare('UPDATE ofertas SET analise_ia = ?, ia_analisada_em = ?, atualizado_em = ? WHERE id = ?').run(resumo, agora(), agora(), id);
+        db.prepare('DELETE FROM sugestoes_ia WHERE oferta_id = ?').run(id);
+        const ins = db.prepare('INSERT INTO sugestoes_ia (oferta_id, pedido_id, pontuacao, motivo) VALUES (?, ?, ?, ?)');
+        for (const s of sugestoes) ins.run(id, s.pedido_id, s.pontuacao, s.motivo);
+        db.exec('COMMIT');
+      } catch (e) { db.exec('ROLLBACK'); throw e; }
+    },
+    /** Sugestões da IA para um conjunto de ofertas: { [ofertaId]: [sugestão...] }. Só pedidos ainda abertos. */
+    sugestoesIa(ids) {
+      const out = {};
+      if (!ids.length) return out;
+      const marcadores = ids.map(() => '?').join(',');
+      const linhas = db.prepare(`SELECT s.oferta_id, s.pedido_id, s.pontuacao, s.motivo,
+          p.nome AS pedido_nome, p.item AS pedido_item, p.cidade AS pedido_cidade, p.status AS pedido_status
+        FROM sugestoes_ia s JOIN pedidos p ON p.id = s.pedido_id
+        WHERE s.oferta_id IN (${marcadores}) AND p.status = 'aberto'
+        ORDER BY s.pontuacao DESC`).all(...ids);
+      for (const l of linhas) (out[l.oferta_id] ||= []).push(limpar(l));
+      return out;
+    },
+    /** IDs das ofertas que valem a pena analisar: ainda em andamento e sem análise (ou todas, se `todas`). */
+    idsParaAnalise({ todas = false } = {}) {
+      const sql = todas
+        ? "SELECT id FROM ofertas WHERE status IN ('nova','aceita','disponivel') ORDER BY id"
+        : "SELECT id FROM ofertas WHERE status IN ('nova','aceita','disponivel') AND ia_analisada_em IS NULL ORDER BY id";
+      return db.prepare(sql).all().map((r) => Number(r.id));
     },
     remover(id) {
       db.prepare('DELETE FROM ofertas WHERE id = ?').run(id);

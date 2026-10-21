@@ -2,6 +2,8 @@
 
 <h1>Painel</h1>
 
+<%- include('../partials/barra-ia', { pendentesIa, voltar: '/admin' }) %>
+
 <section class="numeros">
   <a href="/admin/ofertas?status=nova" class="numero"><strong><%= stats.ofertas_novas %></strong><span>ofertas novas para responder</span></a>
   <a href="/admin/ofertas?status=disponivel" class="numero"><strong><%= stats.ofertas_disponiveis %></strong><span>doações para repassar</span></a>

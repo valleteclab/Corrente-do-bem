@@ -4,6 +4,7 @@ const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { criarApp } = require('../src/server');
 const { abrirBanco } = require('../src/db');
+const { criarIa } = require('../src/ia');
 
 const SENHA = 'segredo-teste';
 let servidor;
@@ -12,7 +13,8 @@ let db;
 
 before(async () => {
   db = abrirBanco(':memory:');
-  const app = criarApp({ db, adminSenha: SENHA, segredo: 'segredo-cookie' });
+  const iaDesligada = { ...criarIa({ client: null }), ativo: false };
+  const app = criarApp({ db, ia: iaDesligada, adminSenha: SENHA, segredo: 'segredo-cookie' });
   await new Promise((resolve) => { servidor = app.listen(0, resolve); });
   base = `http://127.0.0.1:${servidor.address().port}`;
 });

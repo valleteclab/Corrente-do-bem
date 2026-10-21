@@ -2,6 +2,8 @@
 
 <h1>Ofertas de doação</h1>
 
+<%- include('../partials/barra-ia', { pendentesIa, voltar: caminho }) %>
+
 <nav class="abas">
   <a href="/admin/ofertas" class="<%= statusFiltro === '' ? 'ativo' : '' %>">Todas</a>
   <% for (const s of statusLista) { %>

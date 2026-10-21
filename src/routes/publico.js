@@ -26,8 +26,16 @@ function primeiroNome(nome) {
   return partes[0];
 }
 
-module.exports = function criarRotasPublicas(db) {
+/** Espera a promessa até `ms`; se demorar mais, segue sem o resultado (a análise continua em segundo plano). */
+function comTempoLimite(promessa, ms) {
+  let timer;
+  const limite = new Promise((resolve) => { timer = setTimeout(() => resolve(null), ms); });
+  return Promise.race([promessa, limite]).finally(() => clearTimeout(timer));
+}
+
+module.exports = function criarRotasPublicas(db, ia) {
   const router = express.Router();
+  const TEMPO_IA_MS = Number(process.env.IA_TEMPO_LIMITE_MS || 15000);
 
   router.get('/', (req, res) => {
     const todas = db.necessidades.listar();
@@ -60,7 +68,7 @@ module.exports = function criarRotasPublicas(db) {
     });
   });
 
-  router.post('/ajudar', (req, res) => {
+  router.post('/ajudar', async (req, res) => {
     const b = req.body;
     const valores = {
       nome: texto(b.nome, 120),
@@ -96,6 +104,17 @@ module.exports = function criarRotasPublicas(db) {
     }
 
     const resultado = db.ofertas.criar(valores);
+
+    // A IA liga a oferta ao item certo da lista (mesmo escrito com outras palavras) e,
+    // se ela já recebeu, já deixa a doação disponível com sugestões de para quem repassar.
+    // Se demorar, o doador não espera: a análise termina em segundo plano.
+    if (ia.ativo && !resultado.pedido) {
+      const analise = ia.analisarEAplicar(db, resultado.id).catch((e) => {
+        console.error(`IA: erro ao analisar oferta ${resultado.id}:`, e.message);
+        return null;
+      });
+      await comTempoLimite(analise, TEMPO_IA_MS);
+    }
     res.redirect(`/ajudar/obrigado/${resultado.id}`);
   });
 
@@ -145,6 +164,8 @@ module.exports = function criarRotasPublicas(db) {
       return res.status(422).render('pedir', { titulo: 'Preciso de ajuda', valores, erros });
     }
     db.pedidos.criar(valores);
+    // Um pedido novo pode ser atendido por doações que já estão esperando repasse.
+    ia.analisarEmSegundoPlano(db, db.ofertas.listar({ status: 'disponivel' }).slice(0, 20).map((o) => o.id));
     res.redirect('/pedir/obrigado');
   });
 
