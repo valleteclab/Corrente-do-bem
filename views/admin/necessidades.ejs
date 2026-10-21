@@ -1,0 +1,60 @@
+<%- include('../partials/head') %>
+
+<h1>O que <%= config.nome_beneficiaria %> precisa</h1>
+<p class="muted">Quando ela receber um item, marque como "recebido": as ofertas pendentes daquele item ficam disponíveis para repasse automaticamente, e o site passa a avisar quem tentar doar de novo.</p>
+
+<section class="form-caixa">
+  <h2><%= editando ? 'Editar item' : 'Adicionar item' %></h2>
+  <form method="post" action="<%= editando ? '/admin/necessidades/' + editando.id + '/editar' : '/admin/necessidades' %>" class="form form-linha">
+    <label>Item
+      <input type="text" name="titulo" required maxlength="200" value="<%= editando ? editando.titulo : '' %>" placeholder="Ex.: Dentadura, remédio para pressão, geladeira...">
+    </label>
+    <label>Tipo
+      <select name="categoria">
+        <% for (const c of categorias) { %>
+          <option value="<%= c %>" <%= editando && editando.categoria === c ? 'selected' : '' %>><%= c %></option>
+        <% } %>
+      </select>
+    </label>
+    <label>Detalhes (opcional)
+      <input type="text" name="descricao" maxlength="1000" value="<%= editando ? editando.descricao : '' %>" placeholder="Tamanho, quantidade, observações...">
+    </label>
+    <button class="btn"><%= editando ? 'Salvar' : 'Adicionar' %></button>
+    <% if (editando) { %><a href="/admin/necessidades" class="btn btn-secundario">Cancelar</a><% } %>
+  </form>
+</section>
+
+<% if (necessidades.length === 0) { %>
+  <p class="vazio">Nenhum item cadastrado ainda.</p>
+<% } else { %>
+<ul class="lista-admin">
+  <% for (const n of necessidades) { %>
+    <li class="item-admin">
+      <div class="item-cab">
+        <span class="badge badge-<%= n.status %>"><%= rotulos.necessidade[n.status] %></span>
+        <strong><%= n.titulo %></strong>
+        <span class="tag"><%= n.categoria %></span>
+        <% if (n.ofertas_pendentes > 0) { %><span class="muted"><%= n.ofertas_pendentes %> oferta(s) pendente(s)</span><% } %>
+      </div>
+      <% if (n.descricao) { %><p class="muted"><%= n.descricao %></p><% } %>
+      <div class="item-acoes">
+        <% if (n.status === 'aberta') { %>
+          <form method="post" action="/admin/necessidades/<%= n.id %>/recebida" class="inline">
+            <button class="btn btn-pequeno btn-ok">✓ Ela recebeu</button>
+          </form>
+        <% } else { %>
+          <form method="post" action="/admin/necessidades/<%= n.id %>/reabrir" class="inline">
+            <button class="btn btn-pequeno btn-secundario">Ainda precisa (reabrir)</button>
+          </form>
+        <% } %>
+        <a href="/admin/necessidades/<%= n.id %>/editar" class="btn btn-pequeno btn-secundario">Editar</a>
+        <form method="post" action="/admin/necessidades/<%= n.id %>/remover" class="inline" onsubmit="return confirm('Remover este item?')">
+          <button class="btn btn-pequeno btn-perigo">Remover</button>
+        </form>
+      </div>
+    </li>
+  <% } %>
+</ul>
+<% } %>
+
+<%- include('../partials/foot') %>

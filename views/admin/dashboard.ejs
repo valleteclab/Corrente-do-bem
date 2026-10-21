@@ -1,0 +1,39 @@
+<%- include('../partials/head') %>
+
+<h1>Painel</h1>
+
+<section class="numeros">
+  <a href="/admin/ofertas?status=nova" class="numero"><strong><%= stats.ofertas_novas %></strong><span>ofertas novas para responder</span></a>
+  <a href="/admin/ofertas?status=disponivel" class="numero"><strong><%= stats.ofertas_disponiveis %></strong><span>doações para repassar</span></a>
+  <a href="/admin/pedidos?status=aberto" class="numero"><strong><%= stats.pedidos_abertos %></strong><span>pedidos esperando</span></a>
+  <a href="/admin/necessidades" class="numero"><strong><%= stats.necessidades_abertas %></strong><span>itens que ela ainda precisa</span></a>
+</section>
+
+<section>
+  <h2>Ofertas novas</h2>
+  <% if (ofertasNovas.length === 0) { %>
+    <p class="vazio">Nenhuma oferta nova. 👌</p>
+  <% } else { %>
+    <%- include('../partials/tabela-ofertas', { ofertas: ofertasNovas, pedidosAbertos: [], compacta: true, voltar: '/admin' }) %>
+    <p><a href="/admin/ofertas?status=nova">Ver todas →</a></p>
+  <% } %>
+</section>
+
+<section>
+  <h2>Doações disponíveis para repasse</h2>
+  <p class="muted">Ela já recebeu esses itens. Escolha um pedido para repassar.</p>
+  <% if (ofertasDisponiveis.length === 0) { %>
+    <p class="vazio">Nada para repassar agora.</p>
+  <% } else { %>
+    <ul class="lista-simples">
+      <% for (const o of ofertasDisponiveis) { %>
+        <li><strong><%= o.item %></strong> de <%= o.nome %><%= o.cidade ? ' (' + o.cidade + ')' : '' %>
+          <% if (o.necessidade_titulo) { %><span class="muted">· item "<%= o.necessidade_titulo %>"</span><% } %>
+        </li>
+      <% } %>
+    </ul>
+    <p><a href="/admin/ofertas?status=disponivel" class="btn btn-pequeno">Repassar agora →</a></p>
+  <% } %>
+</section>
+
+<%- include('../partials/foot') %>

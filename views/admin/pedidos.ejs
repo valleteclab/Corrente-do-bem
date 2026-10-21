@@ -1,0 +1,61 @@
+<%- include('../partials/head') %>
+
+<h1>Pedidos de ajuda</h1>
+<p class="muted">Pessoas que registraram o que precisam. Para repassar uma doação a alguém daqui, vá em <a href="/admin/ofertas?status=disponivel">Ofertas disponíveis</a>.</p>
+
+<nav class="abas">
+  <a href="/admin/pedidos" class="<%= statusFiltro === '' ? 'ativo' : '' %>">Todos</a>
+  <% for (const s of statusLista) { %>
+    <a href="/admin/pedidos?status=<%= s %>" class="<%= statusFiltro === s ? 'ativo' : '' %>"><%= rotulos.pedido[s] %></a>
+  <% } %>
+</nav>
+
+<% if (pedidos.length === 0) { %>
+  <p class="vazio">Nenhum pedido aqui.</p>
+<% } else { %>
+<ul class="lista-admin">
+  <% for (const p of pedidos) { %>
+    <li class="item-admin status-<%= p.status %>">
+      <div class="item-cab">
+        <span class="badge badge-<%= p.status %>"><%= rotulos.pedido[p.status] %></span>
+        <strong><%= p.item %></strong>
+        <span class="tag"><%= p.categoria %></span>
+        <span class="muted">#<%= p.id %> · <%= formatarData(p.criado_em) %></span>
+      </div>
+      <div class="item-corpo">
+        <p><strong><%= p.nome %></strong><%= p.cidade ? ' · ' + p.cidade : '' %> ·
+          <% const wa = linkWhatsapp(p.contato); %>
+          <% if (wa) { %><a href="<%= wa %>" target="_blank" rel="noopener"><%= p.contato %> (WhatsApp)</a><% } else { %><%= p.contato %><% } %>
+        </p>
+        <% if (p.descricao) { %><p class="muted"><%= p.descricao %></p><% } %>
+        <% if (p.ofertas_vinculadas > 0) { %><p><%= p.ofertas_vinculadas %> doação(ões) repassada(s) para esta pessoa.</p><% } %>
+      </div>
+      <div class="item-acoes">
+        <% if (p.status !== 'atendido') { %>
+          <form method="post" action="/admin/pedidos/<%= p.id %>/status" class="inline">
+            <input type="hidden" name="status" value="atendido"><input type="hidden" name="voltar" value="<%= caminho %>">
+            <button class="btn btn-pequeno btn-ok">✓ Atendido</button>
+          </form>
+        <% } %>
+        <% if (p.status !== 'aberto') { %>
+          <form method="post" action="/admin/pedidos/<%= p.id %>/status" class="inline">
+            <input type="hidden" name="status" value="aberto"><input type="hidden" name="voltar" value="<%= caminho %>">
+            <button class="btn btn-pequeno btn-secundario">Reabrir</button>
+          </form>
+        <% } %>
+        <% if (p.status === 'aberto') { %>
+          <form method="post" action="/admin/pedidos/<%= p.id %>/status" class="inline">
+            <input type="hidden" name="status" value="cancelado"><input type="hidden" name="voltar" value="<%= caminho %>">
+            <button class="btn btn-pequeno btn-perigo">Cancelar</button>
+          </form>
+        <% } %>
+        <form method="post" action="/admin/pedidos/<%= p.id %>/remover" class="inline" onsubmit="return confirm('Remover este pedido?')">
+          <button class="btn btn-pequeno btn-perigo">Remover</button>
+        </form>
+      </div>
+    </li>
+  <% } %>
+</ul>
+<% } %>
+
+<%- include('../partials/foot') %>

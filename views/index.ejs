@@ -1,0 +1,68 @@
+<%- include('partials/head') %>
+
+<section class="hero">
+  <h1><%= config.nome_campanha %></h1>
+  <p class="lead"><%= config.historia %></p>
+  <% if (config.link_video) { %>
+    <p><a href="<%= config.link_video %>" target="_blank" rel="noopener">▶ Ver a história que viralizou</a></p>
+  <% } %>
+  <div class="acoes">
+    <a href="/ajudar" class="btn btn-grande">💛 Quero ajudar</a>
+    <a href="/pedir" class="btn btn-secundario">Eu também preciso de ajuda</a>
+  </div>
+</section>
+
+<section class="numeros">
+  <div class="numero"><strong><%= stats.ofertas_total %></strong><span>pessoas ofereceram ajuda</span></div>
+  <div class="numero"><strong><%= stats.necessidades_recebidas %></strong><span>itens ela já recebeu</span></div>
+  <div class="numero"><strong><%= stats.ofertas_repassadas %></strong><span>doações repassadas a outras pessoas</span></div>
+  <div class="numero"><strong><%= stats.pedidos_abertos %></strong><span>pessoas esperando ajuda</span></div>
+</section>
+
+<section>
+  <h2>O que <%= config.nome_beneficiaria %> ainda precisa</h2>
+  <% if (abertas.length === 0) { %>
+    <p class="vazio">Por enquanto ela não precisa de mais nada. 🎉 Mas a corrente continua: <a href="/pedidos">veja quem mais precisa</a>.</p>
+  <% } else { %>
+    <ul class="cards">
+      <% for (const n of abertas) { %>
+        <li class="card">
+          <span class="tag"><%= n.categoria %></span>
+          <h3><%= n.titulo %></h3>
+          <% if (n.descricao) { %><p><%= n.descricao %></p><% } %>
+          <a href="/ajudar?necessidade=<%= n.id %>" class="btn btn-pequeno">Quero doar isso</a>
+        </li>
+      <% } %>
+    </ul>
+  <% } %>
+</section>
+
+<% if (recebidas.length) { %>
+<section>
+  <h2>O que ela já recebeu 🙏</h2>
+  <p class="muted">Se você queria doar um destes itens, sua doação pode seguir para outra pessoa que ainda precisa.</p>
+  <ul class="lista-recebidos">
+    <% for (const n of recebidas) { %>
+      <li>✅ <%= n.titulo %> <a class="mini" href="/ajudar?necessidade=<%= n.id %>">repassar minha doação</a></li>
+    <% } %>
+  </ul>
+</section>
+<% } %>
+
+<section class="destaque">
+  <h2>Como funciona a corrente</h2>
+  <ol>
+    <li>Você conta o que quer doar.</li>
+    <li>Se ela ainda precisa, a gente combina a entrega com você.</li>
+    <li>Se ela já recebeu, sua doação vai para outra pessoa que pediu ajuda aqui.</li>
+  </ol>
+  <a href="/corrente">Entenda melhor →</a>
+</section>
+
+<% if (config.whatsapp_contato) { %>
+<section class="contato">
+  <a class="btn btn-whatsapp" href="<%= linkWhatsapp(config.whatsapp_contato, 'Oi! Vi a página da ' + config.nome_campanha + ' e quero ajudar.') %>" target="_blank" rel="noopener">Falar no WhatsApp</a>
+</section>
+<% } %>
+
+<%- include('partials/foot') %>

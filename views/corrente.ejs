@@ -1,0 +1,43 @@
+<%- include('partials/head') %>
+
+<h1>Como funciona a corrente 🔗💛</h1>
+<p class="lead">A história de <%= config.nome_beneficiaria %> tocou muita gente. Mas ela não precisa de dez dentaduras nem de vinte cestas básicas. Então a ideia é simples: o que chega a mais, segue para quem ainda precisa.</p>
+
+<section class="passos">
+  <div class="passo">
+    <span class="num">1</span>
+    <h3>Você diz o que quer doar</h3>
+    <p>No formulário <a href="/ajudar">Quero ajudar</a>, você conta o que tem para oferecer e deixa um contato.</p>
+  </div>
+  <div class="passo">
+    <span class="num">2</span>
+    <h3>Se ela ainda precisa, vai para ela</h3>
+    <p>A organização entra em contato e combina a entrega.</p>
+  </div>
+  <div class="passo">
+    <span class="num">3</span>
+    <h3>Se ela já recebeu, sua doação segue a corrente</h3>
+    <p>Sua oferta fica disponível para outras pessoas que registraram um pedido em <a href="/pedidos">Quem precisa</a>. A organização conecta você a quem vai receber.</p>
+  </div>
+  <div class="passo">
+    <span class="num">4</span>
+    <h3>Quem precisa também se cadastra</h3>
+    <p>Qualquer pessoa pode registrar um pedido em <a href="/pedir">Preciso de ajuda</a>. Só o primeiro nome e a cidade aparecem publicamente.</p>
+  </div>
+</section>
+
+<section class="numeros">
+  <div class="numero"><strong><%= stats.ofertas_total %></strong><span>ofertas de ajuda</span></div>
+  <div class="numero"><strong><%= stats.ofertas_repassadas %></strong><span>doações repassadas</span></div>
+  <div class="numero"><strong><%= stats.pedidos_atendidos %></strong><span>pedidos atendidos</span></div>
+  <div class="numero"><strong><%= stats.pedidos_abertos %></strong><span>pedidos esperando</span></div>
+</section>
+
+<section class="destaque">
+  <h2>Privacidade</h2>
+  <p>Contatos (WhatsApp, e-mail) nunca aparecem publicamente. Só a organização da campanha vê, e usa apenas para colocar doador e quem recebe em contato.</p>
+</section>
+
+<p class="acoes"><a href="/ajudar" class="btn btn-grande">💛 Quero ajudar</a></p>
+
+<%- include('partials/foot') %>

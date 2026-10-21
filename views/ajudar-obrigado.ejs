@@ -1,0 +1,44 @@
+<%- include('partials/head') %>
+
+<section class="hero">
+  <% if (oferta.status === 'repassada') { %>
+    <h1>Obrigado! 💛</h1>
+    <p class="lead">Sua oferta de <strong><%= oferta.item %></strong> foi registrada para quem pediu <strong><%= oferta.pedido_item %></strong>.
+      A organização vai colocar vocês em contato para combinar a entrega.</p>
+  <% } else if (oferta.status === 'disponivel') { %>
+    <h1>Sua doação vai seguir a corrente 🔗💛</h1>
+    <p class="lead"><%= config.nome_beneficiaria %> já recebeu <strong><%= oferta.necessidade_titulo %></strong>, então sua oferta de
+      <strong><%= oferta.item %></strong> ficou disponível para outra pessoa que precisa. A organização vai entrar em contato com você quando encontrar quem receber.</p>
+  <% } else if (oferta.necessidade_titulo && oferta.necessidade_status === 'recebida') { %>
+    <h1>Obrigado! 💛</h1>
+    <p class="lead"><%= config.nome_beneficiaria %> já recebeu <strong><%= oferta.necessidade_titulo %></strong>. Como você pediu, a organização vai falar com você antes de decidir o que fazer com sua doação.</p>
+  <% } else { %>
+    <h1>Obrigado! 💛</h1>
+    <p class="lead">Sua oferta de <strong><%= oferta.item %></strong> foi registrada. A organização vai entrar em contato com você para combinar a entrega.</p>
+  <% } %>
+</section>
+
+<% if (pedidosAbertos.length) { %>
+<section>
+  <h2>Pessoas que estão precisando agora</h2>
+  <p class="muted">Se quiser, escolha diretamente para quem sua doação vai.</p>
+  <ul class="cards">
+    <% for (const p of pedidosAbertos) { %>
+      <li class="card">
+        <span class="tag"><%= p.categoria %></span>
+        <h3><%= p.item %></h3>
+        <p class="muted"><%= p.nome %><%= p.cidade ? ' · ' + p.cidade : '' %></p>
+        <a href="/ajudar?pedido=<%= p.id %>" class="btn btn-pequeno">Quero doar para essa pessoa</a>
+      </li>
+    <% } %>
+  </ul>
+  <p><a href="/pedidos">Ver todos os pedidos →</a></p>
+</section>
+<% } %>
+
+<p class="acoes">
+  <a href="/" class="btn btn-secundario">Voltar ao início</a>
+  <a href="/ajudar" class="btn btn-secundario">Oferecer outra doação</a>
+</p>
+
+<%- include('partials/foot') %>
