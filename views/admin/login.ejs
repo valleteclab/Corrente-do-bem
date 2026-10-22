@@ -1,0 +1,16 @@
+<%- include('../partials/head') %>
+<section class="form-estreito">
+  <h1>Painel da campanha</h1>
+  <% if (!painelAtivo) { %>
+    <div class="aviso aviso-atencao">O painel está desativado. Defina a variável de ambiente <code>ADMIN_PASSWORD</code> no servidor para ativar.</div>
+  <% } else { %>
+    <% if (erro) { %><div class="aviso aviso-erro"><%= erro %></div><% } %>
+    <form method="post" action="/admin/login" class="form">
+      <label>Senha
+        <input type="password" name="senha" required autofocus>
+      </label>
+      <button class="btn btn-grande">Entrar</button>
+    </form>
+  <% } %>
+</section>
+<%- include('../partials/foot') %>

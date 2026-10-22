@@ -1,0 +1,112 @@
+<ul class="lista-admin">
+<% for (const o of ofertas) { %>
+  <li class="item-admin status-<%= o.status %>">
+    <div class="item-cab">
+      <span class="badge badge-<%= o.status %>"><%= rotulos.oferta[o.status] %></span>
+      <strong><%= o.item %></strong>
+      <span class="tag"><%= o.categoria %></span>
+      <span class="muted">#<%= o.id %> · <%= formatarData(o.criado_em) %></span>
+    </div>
+    <div class="item-corpo">
+      <p><strong><%= o.nome %></strong><%= o.cidade ? ' · ' + o.cidade : '' %> ·
+        <% const wa = linkWhatsapp(o.contato); %>
+        <% if (wa) { %><a href="<%= wa %>" target="_blank" rel="noopener"><%= o.contato %> (WhatsApp)</a><% } else { %><%= o.contato %><% } %>
+      </p>
+      <% if (o.descricao) { %><p class="muted"><%= o.descricao %></p><% } %>
+      <% if (o.necessidade_titulo) { %>
+        <p>Para o item: <strong><%= o.necessidade_titulo %></strong>
+          <% if (o.necessidade_status === 'recebida') { %><span class="badge badge-recebida">já recebeu</span><% } %>
+        </p>
+      <% } %>
+      <% if (o.pedido_id) { %>
+        <p>Repassada para: <strong><%= o.pedido_nome %></strong> (<%= o.pedido_item %>)
+          <% if (o.pedido_contato) { %>
+            <% const wp = linkWhatsapp(o.pedido_contato); %>
+            · <% if (wp) { %><a href="<%= wp %>" target="_blank" rel="noopener"><%= o.pedido_contato %></a><% } else { %><%= o.pedido_contato %><% } %>
+          <% } %>
+        </p>
+      <% } %>
+      <% if (!o.autoriza_repasse) { %><p class="muted">⚠️ Doador pediu para ser consultado antes de repassar.</p><% } %>
+      <% if (o.observacao_admin) { %><p class="obs">📝 <%= o.observacao_admin %></p><% } %>
+      <% if (o.analise_ia || (o.sugestoes && o.sugestoes.length)) { %>
+        <div class="ia">
+          <% if (o.analise_ia) { %><p class="ia-resumo">🤖 <%= o.analise_ia %></p><% } %>
+          <% if (o.sugestoes && o.sugestoes.length && !['concluida','cancelada'].includes(o.status)) { %>
+            <ul class="ia-sugestoes">
+              <% for (const s of o.sugestoes) { %>
+                <li>
+                  <span class="pontuacao"><%= s.pontuacao %>%</span>
+                  <strong><%= s.pedido_item %></strong> · <%= s.pedido_nome %><%= s.pedido_cidade ? ' (' + s.pedido_cidade + ')' : '' %>
+                  <% if (s.motivo) { %><span class="muted">— <%= s.motivo %></span><% } %>
+                  <% if (o.pedido_id !== s.pedido_id) { %>
+                    <form method="post" action="/admin/ofertas/<%= o.id %>/repassar" class="inline">
+                      <input type="hidden" name="pedido_id" value="<%= s.pedido_id %>"><input type="hidden" name="voltar" value="<%= voltar %>">
+                      <button class="btn btn-pequeno">Repassar para essa pessoa</button>
+                    </form>
+                  <% } else { %><span class="badge badge-repassada">já repassada</span><% } %>
+                </li>
+              <% } %>
+            </ul>
+          <% } %>
+        </div>
+      <% } %>
+    </div>
+    <div class="item-acoes">
+      <% if (['nova','disponivel'].includes(o.status)) { %>
+        <form method="post" action="/admin/ofertas/<%= o.id %>/status" class="inline">
+          <input type="hidden" name="status" value="aceita"><input type="hidden" name="voltar" value="<%= voltar %>">
+          <button class="btn btn-pequeno">Vai para ela</button>
+        </form>
+      <% } %>
+      <% if (['nova','aceita'].includes(o.status)) { %>
+        <form method="post" action="/admin/ofertas/<%= o.id %>/status" class="inline">
+          <input type="hidden" name="status" value="disponivel"><input type="hidden" name="voltar" value="<%= voltar %>">
+          <button class="btn btn-pequeno btn-secundario">Ela já tem, liberar para repasse</button>
+        </form>
+      <% } %>
+      <% if (!compacta && ['nova','disponivel','aceita','repassada'].includes(o.status)) { %>
+        <form method="post" action="/admin/ofertas/<%= o.id %>/repassar" class="inline repassar">
+          <input type="hidden" name="voltar" value="<%= voltar %>">
+          <select name="pedido_id" required>
+            <option value="">Repassar para...</option>
+            <% for (const p of pedidosAbertos) { %>
+              <option value="<%= p.id %>" <%= o.pedido_id === p.id ? 'selected' : '' %>><%= p.item %> · <%= p.nome %><%= p.cidade ? ' (' + p.cidade + ')' : '' %></option>
+            <% } %>
+          </select>
+          <button class="btn btn-pequeno">Repassar</button>
+        </form>
+      <% } %>
+      <% if (['aceita','repassada'].includes(o.status)) { %>
+        <form method="post" action="/admin/ofertas/<%= o.id %>/status" class="inline">
+          <input type="hidden" name="status" value="concluida"><input type="hidden" name="voltar" value="<%= voltar %>">
+          <button class="btn btn-pequeno btn-ok">✓ Entregue</button>
+        </form>
+      <% } %>
+      <% if (!['cancelada','concluida'].includes(o.status)) { %>
+        <form method="post" action="/admin/ofertas/<%= o.id %>/status" class="inline">
+          <input type="hidden" name="status" value="cancelada"><input type="hidden" name="voltar" value="<%= voltar %>">
+          <button class="btn btn-pequeno btn-perigo">Cancelar</button>
+        </form>
+      <% } else { %>
+        <form method="post" action="/admin/ofertas/<%= o.id %>/status" class="inline">
+          <input type="hidden" name="status" value="nova"><input type="hidden" name="voltar" value="<%= voltar %>">
+          <button class="btn btn-pequeno btn-secundario">Reabrir</button>
+        </form>
+      <% } %>
+      <% if (iaAtiva && !['concluida','cancelada'].includes(o.status)) { %>
+        <form method="post" action="/admin/ofertas/<%= o.id %>/ia" class="inline">
+          <input type="hidden" name="voltar" value="<%= voltar %>">
+          <button class="btn btn-pequeno btn-ia"><%= o.ia_analisada_em ? '🤖 Reanalisar' : '🤖 Analisar com IA' %></button>
+        </form>
+      <% } %>
+      <% if (!compacta) { %>
+        <form method="post" action="/admin/ofertas/<%= o.id %>/observacao" class="inline obs-form">
+          <input type="hidden" name="voltar" value="<%= voltar %>">
+          <input type="text" name="observacao" maxlength="1000" placeholder="Anotação interna" value="<%= o.observacao_admin %>">
+          <button class="btn btn-pequeno btn-secundario">Salvar nota</button>
+        </form>
+      <% } %>
+    </div>
+  </li>
+<% } %>
+</ul>

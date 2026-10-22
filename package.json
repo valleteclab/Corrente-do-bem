@@ -1,0 +1,22 @@
+{
+  "name": "corrente-do-bem",
+  "version": "0.1.0",
+  "description": "Plataforma para organizar doações: o que a beneficiária ainda precisa, o que já recebeu, e repasse das doações excedentes para outras pessoas.",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node --no-warnings src/server.js",
+    "dev": "node --no-warnings --watch src/server.js",
+    "test": "node --no-warnings --test 'test/**/*.test.js'"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.0.0",
+    "cookie-parser": "^1.4.7",
+    "ejs": "^3.1.10",
+    "express": "^5.1.0"
+  }
+}

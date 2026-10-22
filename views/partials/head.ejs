@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= titulo ? titulo + ' · ' : '' %><%= config.nome_campanha %></title>
+  <meta name="description" content="<%= config.nome_campanha %>: veja o que <%= config.nome_beneficiaria %> ainda precisa, o que já recebeu, e como sua doação pode seguir para outra pessoa.">
+  <meta property="og:title" content="<%= config.nome_campanha %>">
+  <meta property="og:description" content="Quero ajudar <%= config.nome_beneficiaria %>. E se ela já recebeu, minha doação segue para outra pessoa que precisa.">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💛</text></svg>">
+</head>
+<body>
+<header class="topo">
+  <div class="container topo-inner">
+    <a href="/" class="marca">💛 <%= config.nome_campanha %></a>
+    <nav class="nav">
+      <% if (admin) { %>
+        <a href="/admin" class="<%= caminho === '/admin' ? 'ativo' : '' %>">Painel</a>
+        <a href="/admin/necessidades" class="<%= caminho.startsWith('/admin/necessidades') ? 'ativo' : '' %>">Necessidades</a>
+        <a href="/admin/ofertas" class="<%= caminho.startsWith('/admin/ofertas') ? 'ativo' : '' %>">Ofertas</a>
+        <a href="/admin/pedidos" class="<%= caminho.startsWith('/admin/pedidos') ? 'ativo' : '' %>">Pedidos</a>
+        <a href="/admin/config" class="<%= caminho.startsWith('/admin/config') ? 'ativo' : '' %>">Config</a>
+        <form method="post" action="/admin/sair" class="inline"><button class="link">Sair</button></form>
+      <% } else { %>
+        <a href="/pedidos" class="<%= caminho.startsWith('/pedidos') ? 'ativo' : '' %>">Quem precisa</a>
+        <a href="/corrente" class="<%= caminho.startsWith('/corrente') ? 'ativo' : '' %>">Como funciona</a>
+        <a href="/ajudar" class="btn btn-pequeno">Quero ajudar</a>
+      <% } %>
+    </nav>
+  </div>
+</header>
+<main class="container">
+<% if (flash) { %>
+  <div class="flash flash-<%= flash.tipo %>"><%= flash.mensagem %></div>
+<% } %>

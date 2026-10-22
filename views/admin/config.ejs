@@ -1,0 +1,28 @@
+<%- include('../partials/head') %>
+
+<h1>Configurações da campanha</h1>
+
+<form method="post" action="/admin/config" class="form">
+  <label>Nome da campanha
+    <input type="text" name="nome_campanha" required maxlength="120" value="<%= config.nome_campanha %>">
+  </label>
+  <label>Como chamar a beneficiária no site
+    <input type="text" name="nome_beneficiaria" required maxlength="120" value="<%= config.nome_beneficiaria %>" placeholder="Ex.: Tia Maria, Dona Lúcia...">
+  </label>
+  <label>História (aparece na página inicial)
+    <textarea name="historia" rows="6" maxlength="4000"><%= config.historia %></textarea>
+  </label>
+  <label>Link do vídeo que viralizou (opcional)
+    <input type="url" name="link_video" maxlength="500" value="<%= config.link_video %>" placeholder="https://...">
+  </label>
+  <label>WhatsApp da organização (opcional, só números com DDD)
+    <input type="text" name="whatsapp_contato" maxlength="40" value="<%= config.whatsapp_contato %>" placeholder="11999999999">
+    <small>Se preenchido, aparece um botão "Falar no WhatsApp" na página inicial.</small>
+  </label>
+  <label>Cidade (opcional)
+    <input type="text" name="cidade" maxlength="120" value="<%= config.cidade %>">
+  </label>
+  <button class="btn btn-grande">Salvar</button>
+</form>
+
+<%- include('../partials/foot') %>

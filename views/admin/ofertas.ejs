@@ -1,0 +1,23 @@
+<%- include('../partials/head') %>
+
+<h1>Ofertas de doação</h1>
+
+<%- include('../partials/barra-ia', { pendentesIa, voltar: caminho }) %>
+
+<nav class="abas">
+  <a href="/admin/ofertas" class="<%= statusFiltro === '' ? 'ativo' : '' %>">Todas</a>
+  <% for (const s of statusLista) { %>
+    <a href="/admin/ofertas?status=<%= s %>" class="<%= statusFiltro === s ? 'ativo' : '' %>"><%= rotulos.oferta[s] %></a>
+  <% } %>
+</nav>
+
+<% if (ofertas.length === 0) { %>
+  <p class="vazio">Nenhuma oferta aqui.</p>
+<% } else { %>
+  <% if (pedidosAbertos.length === 0) { %>
+    <div class="aviso aviso-info">Não há pedidos abertos para repassar. Quando alguém registrar um pedido em <a href="/pedir">Preciso de ajuda</a>, ele aparece aqui.</div>
+  <% } %>
+  <%- include('../partials/tabela-ofertas', { ofertas, pedidosAbertos, compacta: false, voltar: caminho }) %>
+<% } %>
+
+<%- include('../partials/foot') %>
