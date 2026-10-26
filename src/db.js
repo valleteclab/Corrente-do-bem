@@ -3,6 +3,7 @@
 const path = require('node:path');
 const fs = require('node:fs');
 const { DatabaseSync } = require('node:sqlite');
+const { criarRepositorioRede } = require('./db-rede');
 
 const CATEGORIAS = [
   'Saúde e remédios',
@@ -82,6 +83,16 @@ CREATE INDEX IF NOT EXISTS idx_pedidos_status ON pedidos(status);
 `;
 
 const CONFIG_PADRAO = {
+  // rede
+  nome_rede: 'Elo Brasil',
+  slogan: 'Comércio, trabalho e ajuda entre quem pensa parecido.',
+  descricao_rede:
+    'Uma rede de pessoas e empresas que compartilham os mesmos valores. Aqui você encontra comércios e profissionais ' +
+    'para contratar, vagas de trabalho, e gente disposta a ajudar. Todo perfil passa por verificação de identidade ' +
+    'ou entra por convite de um membro verificado.',
+  cidade_foco: '',
+  cadastro_aberto: '1',
+  // corrente do bem (módulo de ajuda)
   nome_campanha: 'Corrente do Bem',
   nome_beneficiaria: 'Tia',
   historia:
@@ -352,6 +363,7 @@ function criarRepositorio(db) {
     pedidos,
     ofertas,
     estatisticas,
+    ...criarRepositorioRede(db),
     fechar: () => db.close(),
   };
 }

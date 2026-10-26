@@ -1,0 +1,34 @@
+<%- include('../partials/head') %>
+
+<div class="titulo-acao">
+  <h1>Vagas</h1>
+  <% if (usuario && usuario.tipo === 'empresa' && usuario.status_verificacao === 'verificado') { %>
+    <a href="/vagas/nova" class="btn">+ Publicar vaga</a>
+  <% } %>
+</div>
+<p class="lead">Oportunidades publicadas por empresas verificadas da rede. Membros verificados se candidatam com um clique.</p>
+
+<form method="get" action="/vagas" class="filtro filtro-linha">
+  <input type="text" name="cidade" placeholder="Filtrar por cidade" value="<%= cidadeFiltro %>" maxlength="120">
+  <button class="btn btn-pequeno btn-secundario">Filtrar</button>
+</form>
+
+<% if (vagas.length === 0) { %>
+  <p class="vazio">Nenhuma vaga aberta no momento.</p>
+<% } else { %>
+  <ul class="lista-admin">
+    <% for (const v of vagas) { %>
+      <li class="item-admin">
+        <div class="item-cab">
+          <%- include('../partials/avatar', { pessoa: { nome: v.empresa_nome, foto: v.empresa_foto, tipo: 'empresa' }, tamanho: 'avatar-mini' }) %>
+          <a href="/vagas/<%= v.id %>"><strong><%= v.titulo %></strong></a>
+          <span class="tag"><%= v.tipo %></span>
+          <span class="muted mini"><%= v.empresa_nome %><%= v.cidade ? ' · ' + v.cidade : '' %> · <%= formatarData(v.criado_em) %></span>
+        </div>
+        <p class="mini"><%= v.descricao.slice(0, 180) %><%= v.descricao.length > 180 ? '…' : '' %></p>
+      </li>
+    <% } %>
+  </ul>
+<% } %>
+
+<%- include('../partials/foot') %>

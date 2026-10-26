@@ -5,12 +5,12 @@
     </span>
     <span class="barra-ia-acoes">
       <% if (pendentesIa > 0) { %>
-        <form method="post" action="/admin/ia/analisar" class="inline">
+        <form method="post" action="/admin/corrente/ia/analisar" class="inline">
           <input type="hidden" name="voltar" value="<%= voltar %>">
           <button class="btn btn-pequeno btn-ia">Analisar pendentes</button>
         </form>
       <% } %>
-      <form method="post" action="/admin/ia/analisar" class="inline">
+      <form method="post" action="/admin/corrente/ia/analisar" class="inline">
         <input type="hidden" name="todas" value="1"><input type="hidden" name="voltar" value="<%= voltar %>">
         <button class="btn btn-pequeno btn-secundario">Reanalisar todas</button>
       </form>

@@ -1,4 +1,4 @@
-<%- include('partials/head') %>
+<%- include('../partials/head') %>
 
 <h1>Preciso de ajuda</h1>
 <p class="lead">Muita gente quer ajudar <%= config.nome_beneficiaria %>, e parte do que ela já recebeu pode chegar até você. Conta o que você precisa.</p>
@@ -9,7 +9,7 @@
   </div>
 <% } %>
 
-<form method="post" action="/pedir" class="form">
+<form method="post" action="/corrente/pedir" class="form">
   <input type="text" name="site" class="hp" tabindex="-1" autocomplete="off">
 
   <label>Seu nome
@@ -45,4 +45,4 @@
   <button type="submit" class="btn btn-grande">Registrar meu pedido</button>
 </form>
 
-<%- include('partials/foot') %>
+<%- include('../partials/foot') %>

@@ -1,0 +1,5 @@
+<% if (pessoa.foto) { %>
+  <img class="avatar <%= tamanho || '' %>" src="<%= urlFoto(pessoa.foto) %>" alt="">
+<% } else { %>
+  <span class="avatar <%= tamanho || '' %> avatar-<%= pessoa.tipo === 'empresa' ? 'empresa' : 'pessoa' %>"><%= iniciais(pessoa.nome) %></span>
+<% } %>

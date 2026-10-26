@@ -1,4 +1,4 @@
-<%- include('partials/head') %>
+<%- include('../partials/head') %>
 
 <section class="hero">
   <% if (oferta.status === 'repassada') { %>
@@ -28,17 +28,17 @@
         <span class="tag"><%= p.categoria %></span>
         <h3><%= p.item %></h3>
         <p class="muted"><%= p.nome %><%= p.cidade ? ' · ' + p.cidade : '' %></p>
-        <a href="/ajudar?pedido=<%= p.id %>" class="btn btn-pequeno">Quero doar para essa pessoa</a>
+        <a href="/corrente/ajudar?pedido=<%= p.id %>" class="btn btn-pequeno">Quero doar para essa pessoa</a>
       </li>
     <% } %>
   </ul>
-  <p><a href="/pedidos">Ver todos os pedidos →</a></p>
+  <p><a href="/corrente/pedidos">Ver todos os pedidos →</a></p>
 </section>
 <% } %>
 
 <p class="acoes">
-  <a href="/" class="btn btn-secundario">Voltar ao início</a>
-  <a href="/ajudar" class="btn btn-secundario">Oferecer outra doação</a>
+  <a href="/corrente" class="btn btn-secundario">Voltar à Corrente</a>
+  <a href="/corrente/ajudar" class="btn btn-secundario">Oferecer outra doação</a>
 </p>
 
-<%- include('partials/foot') %>
+<%- include('../partials/foot') %>

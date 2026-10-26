@@ -1,0 +1,68 @@
+<%- include('../partials/head') %>
+
+<div class="duas-colunas">
+<section class="coluna-principal">
+  <h1>Feed</h1>
+
+  <% if (usuario.status_verificacao === 'verificado') { %>
+    <form method="post" action="/post" class="form form-post">
+      <textarea name="texto" rows="3" maxlength="2000" required placeholder="Compartilhe algo com a comunidade de <%= usuario.cidade || 'sua cidade' %>..."></textarea>
+      <button class="btn">Publicar</button>
+    </form>
+  <% } else { %>
+    <div class="aviso aviso-info">Para publicar, <a href="/verificacao">complete sua verificação</a>.</div>
+  <% } %>
+
+  <form method="get" action="/feed" class="filtro filtro-linha">
+    <input type="text" name="cidade" placeholder="Filtrar por cidade" value="<%= cidadeFiltro %>" maxlength="120">
+    <button class="btn btn-pequeno btn-secundario">Filtrar</button>
+    <% if (cidadeFiltro) { %><a href="/feed" class="mini">limpar</a><% } %>
+  </form>
+
+  <% if (posts.length === 0) { %>
+    <p class="vazio">Nenhuma publicação ainda. Seja o primeiro!</p>
+  <% } else { %>
+    <ul class="posts">
+      <% for (const p of posts) { %>
+        <li class="post">
+          <div class="post-cab">
+            <%- include('../partials/avatar', { pessoa: p, tamanho: 'avatar-mini' }) %>
+            <div>
+              <a href="/u/<%= p.usuario_id %>"><strong><%= p.nome %></strong></a>
+              <% if (p.status_verificacao === 'verificado') { %><span class="selo" title="Verificado">✓</span><% } %>
+              <span class="muted mini"><%= p.cidade ? p.cidade + ' · ' : '' %><%= formatarData(p.criado_em) %></span>
+            </div>
+          </div>
+          <p class="post-texto"><%= p.texto %></p>
+          <div class="post-acoes">
+            <% if (p.usuario_id === usuario.id) { %>
+              <form method="post" action="/post/<%= p.id %>/remover" class="inline" onsubmit="return confirm('Remover esta publicação?')"><button class="link mini">Remover</button></form>
+            <% } else { %>
+              <details class="denuncia">
+                <summary class="link mini">Denunciar</summary>
+                <form method="post" action="/post/<%= p.id %>/denunciar" class="inline-form">
+                  <input type="text" name="motivo" maxlength="300" placeholder="Motivo (opcional)">
+                  <button class="btn btn-pequeno btn-perigo">Enviar denúncia</button>
+                </form>
+              </details>
+            <% } %>
+          </div>
+        </li>
+      <% } %>
+    </ul>
+  <% } %>
+</section>
+
+<aside class="coluna-lateral">
+  <div class="caixa">
+    <h3>A rede hoje</h3>
+    <p><strong><%= stats.verificados %></strong> membros verificados<br><strong><%= stats.empresas %></strong> empresas<br><strong><%= stats.cidades %></strong> cidades</p>
+  </div>
+  <div class="caixa">
+    <h3>Atalhos</h3>
+    <p><a href="/diretorio">Diretório</a><br><a href="/vagas">Vagas</a><br><a href="/convites">Meus convites</a><br><a href="/corrente"><%= config.nome_campanha %></a></p>
+  </div>
+</aside>
+</div>
+
+<%- include('../partials/foot') %>

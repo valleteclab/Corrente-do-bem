@@ -3,29 +3,41 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><%= titulo ? titulo + ' · ' : '' %><%= config.nome_campanha %></title>
-  <meta name="description" content="<%= config.nome_campanha %>: veja o que <%= config.nome_beneficiaria %> ainda precisa, o que já recebeu, e como sua doação pode seguir para outra pessoa.">
-  <meta property="og:title" content="<%= config.nome_campanha %>">
-  <meta property="og:description" content="Quero ajudar <%= config.nome_beneficiaria %>. E se ela já recebeu, minha doação segue para outra pessoa que precisa.">
+  <title><%= titulo ? titulo + ' · ' : '' %><%= config.nome_rede %></title>
+  <meta name="description" content="<%= config.nome_rede %>: <%= config.slogan %>">
+  <meta property="og:title" content="<%= config.nome_rede %>">
+  <meta property="og:description" content="<%= config.slogan %>">
   <link rel="stylesheet" href="/style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💛</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%23009C3B'/><polygon points='50,12 88,50 50,88 12,50' fill='%23FFDF00'/><circle cx='50' cy='50' r='18' fill='%23002776'/></svg>">
 </head>
 <body>
 <header class="topo">
   <div class="container topo-inner">
-    <a href="/" class="marca">💛 <%= config.nome_campanha %></a>
+    <a href="/" class="marca"><span class="marca-icone"></span><%= config.nome_rede %></a>
     <nav class="nav">
       <% if (admin) { %>
-        <a href="/admin" class="<%= caminho === '/admin' ? 'ativo' : '' %>">Painel</a>
-        <a href="/admin/necessidades" class="<%= caminho.startsWith('/admin/necessidades') ? 'ativo' : '' %>">Necessidades</a>
-        <a href="/admin/ofertas" class="<%= caminho.startsWith('/admin/ofertas') ? 'ativo' : '' %>">Ofertas</a>
-        <a href="/admin/pedidos" class="<%= caminho.startsWith('/admin/pedidos') ? 'ativo' : '' %>">Pedidos</a>
+        <a href="/admin" class="<%= caminho === '/admin' ? 'ativo' : '' %>">Moderação</a>
+        <a href="/admin/verificacoes" class="<%= caminho.startsWith('/admin/verificacoes') ? 'ativo' : '' %>">Verificações</a>
+        <a href="/admin/usuarios" class="<%= caminho.startsWith('/admin/usuarios') ? 'ativo' : '' %>">Membros</a>
+        <a href="/admin/denuncias" class="<%= caminho.startsWith('/admin/denuncias') ? 'ativo' : '' %>">Denúncias</a>
+        <a href="/admin/corrente/ofertas" class="<%= caminho.startsWith('/admin/corrente') ? 'ativo' : '' %>">Corrente</a>
         <a href="/admin/config" class="<%= caminho.startsWith('/admin/config') ? 'ativo' : '' %>">Config</a>
         <form method="post" action="/admin/sair" class="inline"><button class="link">Sair</button></form>
       <% } else { %>
-        <a href="/pedidos" class="<%= caminho.startsWith('/pedidos') ? 'ativo' : '' %>">Quem precisa</a>
-        <a href="/corrente" class="<%= caminho.startsWith('/corrente') ? 'ativo' : '' %>">Como funciona</a>
-        <a href="/ajudar" class="btn btn-pequeno">Quero ajudar</a>
+        <a href="/diretorio" class="<%= caminho.startsWith('/diretorio') ? 'ativo' : '' %>">Diretório</a>
+        <a href="/vagas" class="<%= caminho.startsWith('/vagas') ? 'ativo' : '' %>">Vagas</a>
+        <a href="/corrente" class="<%= caminho.startsWith('/corrente') ? 'ativo' : '' %>">Corrente do Bem</a>
+        <% if (usuario) { %>
+          <a href="/feed" class="<%= caminho.startsWith('/feed') ? 'ativo' : '' %>">Feed</a>
+          <a href="/perfil" class="avatar-link <%= caminho.startsWith('/perfil') ? 'ativo' : '' %>" title="Meu perfil">
+            <% if (usuario.foto) { %><img class="avatar avatar-mini" src="<%= urlFoto(usuario.foto) %>" alt=""><% } else { %><span class="avatar avatar-mini"><%= iniciais(usuario.nome) %></span><% } %>
+            <%= usuario.nome.split(' ')[0] %>
+            <% if (usuario.status_verificacao === 'verificado') { %><span class="selo" title="Verificado">✓</span><% } %>
+          </a>
+        <% } else { %>
+          <a href="/entrar" class="<%= caminho.startsWith('/entrar') ? 'ativo' : '' %>">Entrar</a>
+          <a href="/cadastrar" class="btn btn-pequeno">Criar conta</a>
+        <% } %>
       <% } %>
     </nav>
   </div>
@@ -33,4 +45,15 @@
 <main class="container">
 <% if (flash) { %>
   <div class="flash flash-<%= flash.tipo %>"><%= flash.mensagem %></div>
+<% } %>
+<% if (usuario && !admin && usuario.status_verificacao !== 'verificado' && !caminho.startsWith('/verificacao')) { %>
+  <div class="aviso aviso-atencao aviso-fino">
+    <% if (usuario.status_verificacao === 'em_analise') { %>
+      ⏳ Sua verificação está em análise. Enquanto isso você pode navegar; postar, convidar e se candidatar liberam depois.
+    <% } else if (usuario.status_verificacao === 'rejeitado') { %>
+      ⚠️ Sua verificação foi recusada. <a href="/verificacao">Veja o motivo e envie de novo</a>.
+    <% } else { %>
+      💡 Falta a verificação para você ter o selo de membro. <a href="/verificacao">Fazer agora</a>.
+    <% } %>
+  </div>
 <% } %>

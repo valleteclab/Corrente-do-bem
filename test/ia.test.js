@@ -68,12 +68,12 @@ test('validar descarta IDs inventados, limita pontuação e ordena', () => {
 
 test('IA liga a oferta escrita com outras palavras ao item já recebido e sugere repasse', async () => {
   const cookie = await loginAdmin();
-  await post('/admin/necessidades', { titulo: 'Dentadura', categoria: 'Saúde e remédios' }, cookie);
+  await post('/admin/corrente/necessidades', { titulo: 'Dentadura', categoria: 'Saúde e remédios' }, cookie);
   const [dentadura] = db.necessidades.listar();
-  await post(`/admin/necessidades/${dentadura.id}/recebida`, {}, cookie);
+  await post(`/admin/corrente/necessidades/${dentadura.id}/recebida`, {}, cookie);
 
-  await post('/pedir', { nome: 'Dona Maria', contato: '119', cidade: 'Osasco', item: 'Prótese dentária', categoria: 'Saúde e remédios' });
-  await post('/pedir', { nome: 'José', contato: '118', cidade: 'Barueri', item: 'Cesta básica', categoria: 'Alimentação' });
+  await post('/corrente/pedir', { nome: 'Dona Maria', contato: '119', cidade: 'Osasco', item: 'Prótese dentária', categoria: 'Saúde e remédios' });
+  await post('/corrente/pedir', { nome: 'José', contato: '118', cidade: 'Barueri', item: 'Cesta básica', categoria: 'Alimentação' });
   const [cesta, protese] = db.pedidos.listar();
   assert.equal(protese.item, 'Prótese dentária');
 
@@ -93,7 +93,7 @@ test('IA liga a oferta escrita com outras palavras ao item já recebido e sugere
     };
   };
 
-  const r = await post('/ajudar', { nome: 'Ana', contato: '117', cidade: 'Carapicuíba', item: 'prótese dentária superior', categoria: 'Saúde e remédios', autoriza_repasse: '1' });
+  const r = await post('/corrente/ajudar', { nome: 'Ana', contato: '117', cidade: 'Carapicuíba', item: 'prótese dentária superior', categoria: 'Saúde e remédios', autoriza_repasse: '1' });
   assert.equal(r.status, 302);
   const oferta = db.ofertas.listar()[0];
   assert.equal(oferta.necessidade_id, dentadura.id, 'IA ligou ao item certo');
@@ -116,12 +116,12 @@ test('IA liga a oferta escrita com outras palavras ao item já recebido e sugere
   assert.match(html, /vai seguir a corrente/);
 
   // Painel mostra a sugestão com botão de repasse direto.
-  const painel = await (await fetch(base + '/admin/ofertas', { headers: { cookie } })).text();
+  const painel = await (await fetch(base + '/admin/corrente/ofertas', { headers: { cookie } })).text();
   assert.match(painel, /95%/);
   assert.match(painel, /Repassar para essa pessoa/);
 
   // Repassar pela sugestão.
-  const rp = await post(`/admin/ofertas/${oferta.id}/repassar`, { pedido_id: protese.id }, cookie);
+  const rp = await post(`/admin/corrente/ofertas/${oferta.id}/repassar`, { pedido_id: protese.id }, cookie);
   assert.equal(rp.status, 302);
   assert.equal(db.ofertas.buscar(oferta.id).status, 'repassada');
 });
@@ -129,7 +129,7 @@ test('IA liga a oferta escrita com outras palavras ao item já recebido e sugere
 test('doador que não autoriza repasse continua "nova" mesmo com item já recebido', async () => {
   const [dentadura] = db.necessidades.listar();
   respostaFake = () => ({ necessidade_id: dentadura.id, resumo: 'já recebeu', sugestoes: [] });
-  const r = await post('/ajudar', { nome: 'Bia', contato: '116', item: 'dentadura', categoria: 'Saúde e remédios', autoriza_repasse: '0' });
+  const r = await post('/corrente/ajudar', { nome: 'Bia', contato: '116', item: 'dentadura', categoria: 'Saúde e remédios', autoriza_repasse: '0' });
   assert.equal(r.status, 302);
   const oferta = db.ofertas.listar().find((o) => o.nome === 'Bia');
   assert.equal(oferta.status, 'nova');
@@ -138,7 +138,7 @@ test('doador que não autoriza repasse continua "nova" mesmo com item já recebi
 
 test('erro na IA não impede o doador de registrar a oferta', async () => {
   respostaFake = () => { throw new Error('API fora do ar'); };
-  const r = await post('/ajudar', { nome: 'Caio', contato: '115', item: 'geladeira', categoria: 'Móveis e eletrodomésticos' });
+  const r = await post('/corrente/ajudar', { nome: 'Caio', contato: '115', item: 'geladeira', categoria: 'Móveis e eletrodomésticos' });
   assert.equal(r.status, 302);
   const oferta = db.ofertas.listar().find((o) => o.nome === 'Caio');
   assert.equal(oferta.status, 'nova');
@@ -149,7 +149,7 @@ test('botão "Analisar pendentes" analisa só as ofertas sem análise', async ()
   const cookie = await loginAdmin();
   const antes = chamadas.length;
   respostaFake = () => ({ necessidade_id: null, resumo: 'sem correspondência', sugestoes: [] });
-  const r = await post('/admin/ia/analisar', {}, cookie);
+  const r = await post('/admin/corrente/ia/analisar', {}, cookie);
   assert.equal(r.status, 302);
   assert.equal(chamadas.length - antes, 1, 'só a oferta do Caio estava pendente');
   assert.equal(db.ofertas.idsParaAnalise().length, 0);

@@ -39,7 +39,7 @@ module.exports = function criarRotasPublicas(db, ia) {
 
   router.get('/', (req, res) => {
     const todas = db.necessidades.listar();
-    res.render('index', {
+    res.render('corrente/index', {
       titulo: null,
       abertas: todas.filter((n) => n.status === 'aberta'),
       recebidas: todas.filter((n) => n.status === 'recebida'),
@@ -47,8 +47,8 @@ module.exports = function criarRotasPublicas(db, ia) {
     });
   });
 
-  router.get('/corrente', (req, res) => {
-    res.render('corrente', { titulo: 'Como funciona a corrente', stats: db.estatisticas() });
+  router.get('/como-funciona', (req, res) => {
+    res.render('corrente/como-funciona', { titulo: 'Como funciona a corrente', stats: db.estatisticas() });
   });
 
   // ----- quero ajudar -----
@@ -58,7 +58,7 @@ module.exports = function criarRotasPublicas(db, ia) {
     const necessidade = necessidadeId ? db.necessidades.buscar(necessidadeId) : null;
     const pedidoBruto = pedidoId ? db.pedidos.buscar(pedidoId) : null;
     const pedido = pedidoBruto && pedidoBruto.status === 'aberto' ? pedidoBruto : null;
-    res.render('ajudar', {
+    res.render('corrente/ajudar', {
       titulo: 'Quero ajudar',
       necessidades: db.necessidades.listar(),
       necessidadeSelecionada: necessidade,
@@ -83,7 +83,7 @@ module.exports = function criarRotasPublicas(db, ia) {
     };
 
     // Honeypot simples contra bots.
-    if (texto(b.site)) return res.redirect('/');
+    if (texto(b.site)) return res.redirect('/corrente');
 
     const erros = [];
     if (!valores.nome) erros.push('Diz seu nome pra gente saber quem é você.');
@@ -93,7 +93,7 @@ module.exports = function criarRotasPublicas(db, ia) {
     if (erros.length) {
       const necessidade = valores.necessidade_id ? db.necessidades.buscar(valores.necessidade_id) : null;
       const pedido = valores.pedido_id ? db.pedidos.buscar(valores.pedido_id) : null;
-      return res.status(422).render('ajudar', {
+      return res.status(422).render('corrente/ajudar', {
         titulo: 'Quero ajudar',
         necessidades: db.necessidades.listar(),
         necessidadeSelecionada: necessidade,
@@ -115,16 +115,16 @@ module.exports = function criarRotasPublicas(db, ia) {
       });
       await comTempoLimite(analise, TEMPO_IA_MS);
     }
-    res.redirect(`/ajudar/obrigado/${resultado.id}`);
+    res.redirect(`/corrente/ajudar/obrigado/${resultado.id}`);
   });
 
   router.get('/ajudar/obrigado/:id', (req, res) => {
     const oferta = db.ofertas.buscar(inteiroOuNulo(req.params.id));
-    if (!oferta) return res.redirect('/');
+    if (!oferta) return res.redirect('/corrente');
     const pedidosAbertos = oferta.status === 'disponivel'
       ? db.pedidos.listar({ status: 'aberto' }).slice(0, 6).map((p) => ({ ...p, nome: primeiroNome(p.nome) }))
       : [];
-    res.render('ajudar-obrigado', {
+    res.render('corrente/ajudar-obrigado', {
       titulo: 'Obrigado!',
       oferta: {
         item: oferta.item,
@@ -140,7 +140,7 @@ module.exports = function criarRotasPublicas(db, ia) {
 
   // ----- preciso de ajuda -----
   router.get('/pedir', (req, res) => {
-    res.render('pedir', { titulo: 'Preciso de ajuda', valores: {}, erros: [] });
+    res.render('corrente/pedir', { titulo: 'Preciso de ajuda', valores: {}, erros: [] });
   });
 
   router.post('/pedir', (req, res) => {
@@ -153,7 +153,7 @@ module.exports = function criarRotasPublicas(db, ia) {
       descricao: texto(b.descricao, 1000),
       categoria: categoriaValida(b.categoria),
     };
-    if (texto(b.site)) return res.redirect('/');
+    if (texto(b.site)) return res.redirect('/corrente');
 
     const erros = [];
     if (!valores.nome) erros.push('Diz seu nome.');
@@ -161,16 +161,16 @@ module.exports = function criarRotasPublicas(db, ia) {
     if (!valores.item) erros.push('Conta o que você está precisando.');
 
     if (erros.length) {
-      return res.status(422).render('pedir', { titulo: 'Preciso de ajuda', valores, erros });
+      return res.status(422).render('corrente/pedir', { titulo: 'Preciso de ajuda', valores, erros });
     }
     db.pedidos.criar(valores);
     // Um pedido novo pode ser atendido por doações que já estão esperando repasse.
     ia.analisarEmSegundoPlano(db, db.ofertas.listar({ status: 'disponivel' }).slice(0, 20).map((o) => o.id));
-    res.redirect('/pedir/obrigado');
+    res.redirect('/corrente/pedir/obrigado');
   });
 
   router.get('/pedir/obrigado', (req, res) => {
-    res.render('pedir-obrigado', { titulo: 'Pedido registrado' });
+    res.render('corrente/pedir-obrigado', { titulo: 'Pedido registrado' });
   });
 
   // ----- lista pública de quem precisa -----
@@ -178,7 +178,7 @@ module.exports = function criarRotasPublicas(db, ia) {
     const categoria = CATEGORIAS.includes(req.query.categoria) ? req.query.categoria : '';
     const pedidos = db.pedidos.listar({ status: 'aberto', ...(categoria ? { categoria } : {}) })
       .map((p) => ({ id: p.id, nome: primeiroNome(p.nome), cidade: p.cidade, item: p.item, descricao: p.descricao, categoria: p.categoria, criado_em: p.criado_em }));
-    res.render('pedidos', { titulo: 'Quem mais precisa de ajuda', pedidos, categoriaFiltro: categoria });
+    res.render('corrente/pedidos', { titulo: 'Quem mais precisa de ajuda', pedidos, categoriaFiltro: categoria });
   });
 
   return router;

@@ -1,25 +1,40 @@
 <%- include('../partials/head') %>
 
-<h1>Configurações da campanha</h1>
+<h1>Configurações</h1>
 
 <form method="post" action="/admin/config" class="form">
+  <h2>Rede</h2>
+  <label>Nome da rede
+    <input type="text" name="nome_rede" required maxlength="120" value="<%= config.nome_rede %>">
+  </label>
+  <label>Slogan
+    <input type="text" name="slogan" maxlength="200" value="<%= config.slogan %>">
+  </label>
+  <label>Descrição (página inicial)
+    <textarea name="descricao_rede" rows="4" maxlength="4000"><%= config.descricao_rede %></textarea>
+  </label>
+  <label>Cidade/região de foco (opcional)
+    <input type="text" name="cidade_foco" maxlength="120" value="<%= config.cidade_foco %>">
+  </label>
+  <label class="radio"><input type="checkbox" name="cadastro_aberto" value="1" <%= config.cadastro_aberto === '1' ? 'checked' : '' %>> Cadastro aberto (desmarque para aceitar só por convite)</label>
+
+  <h2><%= config.nome_campanha %></h2>
   <label>Nome da campanha
     <input type="text" name="nome_campanha" required maxlength="120" value="<%= config.nome_campanha %>">
   </label>
-  <label>Como chamar a beneficiária no site
-    <input type="text" name="nome_beneficiaria" required maxlength="120" value="<%= config.nome_beneficiaria %>" placeholder="Ex.: Tia Maria, Dona Lúcia...">
+  <label>Como chamar a beneficiária
+    <input type="text" name="nome_beneficiaria" required maxlength="120" value="<%= config.nome_beneficiaria %>">
   </label>
-  <label>História (aparece na página inicial)
-    <textarea name="historia" rows="6" maxlength="4000"><%= config.historia %></textarea>
+  <label>História
+    <textarea name="historia" rows="5" maxlength="4000"><%= config.historia %></textarea>
   </label>
-  <label>Link do vídeo que viralizou (opcional)
-    <input type="url" name="link_video" maxlength="500" value="<%= config.link_video %>" placeholder="https://...">
+  <label>Link do vídeo (opcional)
+    <input type="url" name="link_video" maxlength="500" value="<%= config.link_video %>">
   </label>
-  <label>WhatsApp da organização (opcional, só números com DDD)
-    <input type="text" name="whatsapp_contato" maxlength="40" value="<%= config.whatsapp_contato %>" placeholder="11999999999">
-    <small>Se preenchido, aparece um botão "Falar no WhatsApp" na página inicial.</small>
+  <label>WhatsApp da organização (só números com DDD)
+    <input type="text" name="whatsapp_contato" maxlength="40" value="<%= config.whatsapp_contato %>">
   </label>
-  <label>Cidade (opcional)
+  <label>Cidade
     <input type="text" name="cidade" maxlength="120" value="<%= config.cidade %>">
   </label>
   <button class="btn btn-grande">Salvar</button>

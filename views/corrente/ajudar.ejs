@@ -1,4 +1,4 @@
-<%- include('partials/head') %>
+<%- include('../partials/head') %>
 
 <h1>Quero ajudar 💛</h1>
 
@@ -11,7 +11,7 @@
   <div class="aviso aviso-atencao">
     <strong><%= config.nome_beneficiaria %> já recebeu "<%= necessidadeSelecionada.titulo %>"</strong>. 🙏<br>
     Mas tem outras pessoas precisando disso. Se você quiser, a gente repassa sua doação para alguém que ainda precisa.
-    <a href="/pedidos">Ver quem precisa</a>
+    <a href="/corrente/pedidos">Ver quem precisa</a>
   </div>
 <% } %>
 
@@ -21,7 +21,7 @@
   </div>
 <% } %>
 
-<form method="post" action="/ajudar" class="form">
+<form method="post" action="/corrente/ajudar" class="form">
   <input type="text" name="site" class="hp" tabindex="-1" autocomplete="off">
   <% if (pedidoSelecionado) { %>
     <input type="hidden" name="pedido_id" value="<%= pedidoSelecionado.id %>">
@@ -80,4 +80,4 @@
   <button type="submit" class="btn btn-grande">Enviar minha oferta</button>
 </form>
 
-<%- include('partials/foot') %>
+<%- include('../partials/foot') %>

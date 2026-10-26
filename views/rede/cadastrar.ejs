@@ -1,0 +1,66 @@
+<%- include('../partials/head') %>
+<section class="form-estreito form-medio">
+  <h1>Criar conta</h1>
+
+  <% if (convite) { %>
+    <div class="aviso aviso-ok">🎟️ Você foi convidado(a) por <strong><%= convite.convidante_nome %></strong>. Sua verificação terá prioridade.</div>
+  <% } %>
+  <% if (erros.length) { %>
+    <div class="aviso aviso-erro"><ul><% for (const e of erros) { %><li><%= e %></li><% } %></ul></div>
+  <% } %>
+
+  <form method="post" action="/cadastrar" class="form">
+    <input type="text" name="site" class="hp" tabindex="-1" autocomplete="off">
+    <input type="hidden" name="convite" value="<%= valores.convite || '' %>">
+
+    <fieldset class="opcao">
+      <legend>Tipo de perfil</legend>
+      <label class="radio"><input type="radio" name="tipo" value="pessoa" <%= valores.tipo !== 'empresa' ? 'checked' : '' %> onchange="document.getElementById('cat').style.display='none'"> Pessoa</label>
+      <label class="radio"><input type="radio" name="tipo" value="empresa" <%= valores.tipo === 'empresa' ? 'checked' : '' %> onchange="document.getElementById('cat').style.display='flex'"> Empresa ou profissional</label>
+    </fieldset>
+
+    <label>Nome (ou nome da empresa)
+      <input type="text" name="nome" required maxlength="120" value="<%= valores.nome || '' %>" autocomplete="name">
+    </label>
+    <label id="cat" style="display:<%= valores.tipo === 'empresa' ? 'flex' : 'none' %>">Categoria da empresa
+      <select name="categoria">
+        <option value="">Escolha...</option>
+        <% for (const c of categoriasEmpresa) { %><option value="<%= c %>" <%= valores.categoria === c ? 'selected' : '' %>><%= c %></option><% } %>
+      </select>
+    </label>
+    <label>E-mail
+      <input type="email" name="email" required maxlength="160" value="<%= valores.email || '' %>" autocomplete="email">
+    </label>
+    <label>Senha (mínimo 8 caracteres)
+      <input type="password" name="senha" required minlength="8" autocomplete="new-password">
+    </label>
+    <div class="linha-2">
+      <label>Cidade
+        <input type="text" name="cidade" required maxlength="120" value="<%= valores.cidade || '' %>">
+      </label>
+      <label>UF
+        <input type="text" name="estado" maxlength="2" value="<%= valores.estado || '' %>" placeholder="SP">
+      </label>
+    </div>
+    <label>WhatsApp (opcional, só membros verificados veem)
+      <input type="text" name="whatsapp" maxlength="40" value="<%= valores.whatsapp || '' %>" placeholder="(11) 99999-9999">
+    </label>
+    <label>Instagram (opcional agora, pedido na verificação)
+      <input type="text" name="instagram" maxlength="60" value="<%= valores.instagram || '' %>" placeholder="@seuperfil">
+    </label>
+    <% if (!valores.convite) { %>
+    <label>Código de convite (se tiver)
+      <input type="text" name="convite" maxlength="20" placeholder="Ex.: A1B2C3D4" style="text-transform:uppercase">
+    </label>
+    <% } %>
+
+    <label class="radio consent">
+      <input type="checkbox" name="consentimento" value="1" required>
+      <span>Li e aceito os <a href="/termos" target="_blank">termos de uso e a política de privacidade</a>, inclusive o uso das minhas fotos de documento somente para verificação de identidade.</span>
+    </label>
+
+    <button class="btn btn-grande">Criar conta</button>
+    <p class="mini muted">Já tem conta? <a href="/entrar">Entrar</a></p>
+  </form>
+</section>
+<%- include('../partials/foot') %>

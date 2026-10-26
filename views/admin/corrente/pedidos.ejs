@@ -1,12 +1,12 @@
-<%- include('../partials/head') %>
+<%- include('../../partials/head') %>
 
 <h1>Pedidos de ajuda</h1>
-<p class="muted">Pessoas que registraram o que precisam. Para repassar uma doação a alguém daqui, vá em <a href="/admin/ofertas?status=disponivel">Ofertas disponíveis</a>.</p>
+<p class="muted">Pessoas que registraram o que precisam. Para repassar uma doação a alguém daqui, vá em <a href="/admin/corrente/ofertas?status=disponivel">Ofertas disponíveis</a>.</p>
 
 <nav class="abas">
-  <a href="/admin/pedidos" class="<%= statusFiltro === '' ? 'ativo' : '' %>">Todos</a>
+  <a href="/admin/corrente/pedidos" class="<%= statusFiltro === '' ? 'ativo' : '' %>">Todos</a>
   <% for (const s of statusLista) { %>
-    <a href="/admin/pedidos?status=<%= s %>" class="<%= statusFiltro === s ? 'ativo' : '' %>"><%= rotulos.pedido[s] %></a>
+    <a href="/admin/corrente/pedidos?status=<%= s %>" class="<%= statusFiltro === s ? 'ativo' : '' %>"><%= rotulos.pedido[s] %></a>
   <% } %>
 </nav>
 
@@ -32,24 +32,24 @@
       </div>
       <div class="item-acoes">
         <% if (p.status !== 'atendido') { %>
-          <form method="post" action="/admin/pedidos/<%= p.id %>/status" class="inline">
+          <form method="post" action="/admin/corrente/pedidos/<%= p.id %>/status" class="inline">
             <input type="hidden" name="status" value="atendido"><input type="hidden" name="voltar" value="<%= caminho %>">
             <button class="btn btn-pequeno btn-ok">✓ Atendido</button>
           </form>
         <% } %>
         <% if (p.status !== 'aberto') { %>
-          <form method="post" action="/admin/pedidos/<%= p.id %>/status" class="inline">
+          <form method="post" action="/admin/corrente/pedidos/<%= p.id %>/status" class="inline">
             <input type="hidden" name="status" value="aberto"><input type="hidden" name="voltar" value="<%= caminho %>">
             <button class="btn btn-pequeno btn-secundario">Reabrir</button>
           </form>
         <% } %>
         <% if (p.status === 'aberto') { %>
-          <form method="post" action="/admin/pedidos/<%= p.id %>/status" class="inline">
+          <form method="post" action="/admin/corrente/pedidos/<%= p.id %>/status" class="inline">
             <input type="hidden" name="status" value="cancelado"><input type="hidden" name="voltar" value="<%= caminho %>">
             <button class="btn btn-pequeno btn-perigo">Cancelar</button>
           </form>
         <% } %>
-        <form method="post" action="/admin/pedidos/<%= p.id %>/remover" class="inline" onsubmit="return confirm('Remover este pedido?')">
+        <form method="post" action="/admin/corrente/pedidos/<%= p.id %>/remover" class="inline" onsubmit="return confirm('Remover este pedido?')">
           <button class="btn btn-pequeno btn-perigo">Remover</button>
         </form>
       </div>
@@ -58,4 +58,4 @@
 </ul>
 <% } %>
 
-<%- include('../partials/foot') %>
+<%- include('../../partials/foot') %>

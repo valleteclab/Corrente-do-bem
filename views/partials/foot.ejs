@@ -1,8 +1,11 @@
 </main>
 <footer class="rodape">
   <div class="container">
-    <p><%= config.nome_campanha %> · uma doação que sobra aqui vira ajuda em outro lugar.</p>
-    <p class="mini"><a href="/pedir">Preciso de ajuda</a> · <a href="/pedidos">Quem precisa</a> · <a href="/corrente">Como funciona</a> · <a href="/admin/login">Painel</a></p>
+    <p><strong><%= config.nome_rede %></strong> · <%= config.slogan %></p>
+    <p class="mini">
+      <a href="/sobre">Como funciona</a> · <a href="/diretorio">Diretório</a> · <a href="/vagas">Vagas</a> ·
+      <a href="/corrente"><%= config.nome_campanha %></a> · <a href="/termos">Termos e privacidade</a> · <a href="/admin/login">Moderação</a>
+    </p>
   </div>
 </footer>
 </body>

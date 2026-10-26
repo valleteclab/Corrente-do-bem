@@ -1,0 +1,43 @@
+<%- include('../partials/head') %>
+
+<h1>Denúncias</h1>
+<nav class="abas">
+  <a href="/admin/denuncias" class="<%= !mostrandoResolvidas ? 'ativo' : '' %>">Abertas</a>
+  <a href="/admin/denuncias?resolvidas=1" class="<%= mostrandoResolvidas ? 'ativo' : '' %>">Resolvidas</a>
+</nav>
+
+<% if (denuncias.length === 0) { %>
+  <p class="vazio">Nenhuma denúncia aqui.</p>
+<% } else { %>
+<ul class="lista-admin">
+  <% for (const d of denuncias) { %>
+    <li class="item-admin">
+      <div class="item-cab">
+        <strong><%= d.post_id ? 'Publicação' : 'Perfil' %></strong>
+        <span class="muted">#<%= d.id %> · <%= formatarData(d.criado_em) %> · denunciado por <%= d.autor_nome %></span>
+      </div>
+      <div class="item-corpo">
+        <% if (d.post_id) { %>
+          <p class="post-texto"><%= d.post_texto %></p>
+          <p class="mini muted">Autor: <a href="/u/<%= d.post_autor_id %>" target="_blank"><%= d.post_autor_nome %></a></p>
+        <% } else { %>
+          <p>Perfil: <a href="/u/<%= d.usuario_alvo_id %>" target="_blank"><%= d.alvo_nome %></a></p>
+        <% } %>
+        <% if (d.motivo) { %><p class="obs">💬 <%= d.motivo %></p><% } %>
+      </div>
+      <% if (!d.resolvida) { %>
+      <div class="item-acoes">
+        <% if (d.post_id) { %>
+          <form method="post" action="/admin/denuncias/<%= d.id %>/resolver" class="inline"><input type="hidden" name="remover_post" value="1"><input type="hidden" name="post_id" value="<%= d.post_id %>"><button class="btn btn-pequeno btn-perigo">Remover publicação e resolver</button></form>
+        <% } %>
+        <form method="post" action="/admin/denuncias/<%= d.id %>/resolver" class="inline"><button class="btn btn-pequeno btn-secundario">Resolver sem ação</button></form>
+        <% const alvo = d.post_id ? d.post_autor_id : d.usuario_alvo_id; %>
+        <form method="post" action="/admin/usuarios/<%= alvo %>/banir" class="inline" onsubmit="return confirm('Suspender esta conta?')"><input type="hidden" name="banido" value="1"><input type="hidden" name="voltar" value="/admin/denuncias"><button class="btn btn-pequeno btn-perigo">Suspender conta</button></form>
+      </div>
+      <% } %>
+    </li>
+  <% } %>
+</ul>
+<% } %>
+
+<%- include('../partials/foot') %>

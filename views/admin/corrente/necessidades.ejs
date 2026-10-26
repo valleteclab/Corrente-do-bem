@@ -1,4 +1,4 @@
-<%- include('../partials/head') %>
+<%- include('../../partials/head') %>
 
 <h1>O que <%= config.nome_beneficiaria %> precisa</h1>
 <p class="muted">Quando ela receber um item, marque como "recebido": as ofertas pendentes daquele item ficam disponíveis para repasse automaticamente, e o site passa a avisar quem tentar doar de novo.</p>
@@ -20,7 +20,7 @@
       <input type="text" name="descricao" maxlength="1000" value="<%= editando ? editando.descricao : '' %>" placeholder="Tamanho, quantidade, observações...">
     </label>
     <button class="btn"><%= editando ? 'Salvar' : 'Adicionar' %></button>
-    <% if (editando) { %><a href="/admin/necessidades" class="btn btn-secundario">Cancelar</a><% } %>
+    <% if (editando) { %><a href="/admin/corrente/necessidades" class="btn btn-secundario">Cancelar</a><% } %>
   </form>
 </section>
 
@@ -39,16 +39,16 @@
       <% if (n.descricao) { %><p class="muted"><%= n.descricao %></p><% } %>
       <div class="item-acoes">
         <% if (n.status === 'aberta') { %>
-          <form method="post" action="/admin/necessidades/<%= n.id %>/recebida" class="inline">
+          <form method="post" action="/admin/corrente/necessidades/<%= n.id %>/recebida" class="inline">
             <button class="btn btn-pequeno btn-ok">✓ Ela recebeu</button>
           </form>
         <% } else { %>
-          <form method="post" action="/admin/necessidades/<%= n.id %>/reabrir" class="inline">
+          <form method="post" action="/admin/corrente/necessidades/<%= n.id %>/reabrir" class="inline">
             <button class="btn btn-pequeno btn-secundario">Ainda precisa (reabrir)</button>
           </form>
         <% } %>
-        <a href="/admin/necessidades/<%= n.id %>/editar" class="btn btn-pequeno btn-secundario">Editar</a>
-        <form method="post" action="/admin/necessidades/<%= n.id %>/remover" class="inline" onsubmit="return confirm('Remover este item?')">
+        <a href="/admin/corrente/necessidades/<%= n.id %>/editar" class="btn btn-pequeno btn-secundario">Editar</a>
+        <form method="post" action="/admin/corrente/necessidades/<%= n.id %>/remover" class="inline" onsubmit="return confirm('Remover este item?')">
           <button class="btn btn-pequeno btn-perigo">Remover</button>
         </form>
       </div>
@@ -57,4 +57,4 @@
 </ul>
 <% } %>
 
-<%- include('../partials/foot') %>
+<%- include('../../partials/foot') %>

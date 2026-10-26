@@ -194,7 +194,112 @@ function criarIa({ client, modelo = MODELO, logger = console } = {}) {
     analisarLote(db, ids).catch((e) => logger.error('IA: erro em segundo plano:', e.message));
   }
 
-  return { ativo, modelo, analisarOferta, analisarEAplicar, analisarLote, analisarEmSegundoPlano, validar };
+  // ---------- triagem de verificação de identidade ----------
+
+  /**
+   * Pré-análise de uma verificação (selfie com documento + foto do documento + Instagram).
+   * Só checa qualidade e coerência das imagens. Não decide: a moderação decide.
+   * Retorna { recomendacao: 'aprovar'|'revisar'|'rejeitar', resumo, ... }.
+   */
+  async function analisarVerificacao({ selfieBase64, selfieTipo, documentoBase64, documentoTipo, nome, instagram, cidade, convidadoPor }) {
+    if (!ativo) throw new Error('IA desativada: defina ANTHROPIC_API_KEY');
+    const conteudo = [];
+    if (selfieBase64) {
+      conteudo.push({ type: 'text', text: 'Imagem 1: selfie da pessoa segurando o documento.' });
+      conteudo.push({ type: 'image', source: { type: 'base64', media_type: selfieTipo, data: selfieBase64 } });
+    }
+    if (documentoBase64) {
+      conteudo.push({ type: 'text', text: 'Imagem 2: foto do documento (RG ou CNH).' });
+      conteudo.push({ type: 'image', source: { type: 'base64', media_type: documentoTipo, data: documentoBase64 } });
+    }
+    conteudo.push({
+      type: 'text',
+      text: [
+        `Nome informado no cadastro: ${nome}`,
+        `Cidade informada: ${cidade || '(não informada)'}`,
+        `Instagram informado: ${instagram ? '@' + instagram : '(não informado)'}`,
+        `Entrou por convite de membro verificado: ${convidadoPor ? 'sim' : 'não'}`,
+      ].join('\n'),
+    });
+
+    const resposta = await anthropic.beta.messages.create({
+      model: modelo,
+      max_tokens: 2000,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      system: [{ type: 'text', text: SISTEMA_VERIFICACAO, cache_control: { type: 'ephemeral' } }],
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: ESQUEMA_VERIFICACAO } },
+      messages: [{ role: 'user', content: conteudo }],
+    });
+    if (resposta.stop_reason === 'refusal') throw new Error('A IA não conseguiu analisar esta verificação.');
+    const texto = resposta.content.filter((b) => b.type === 'text').map((b) => b.text).join('');
+    let bruto;
+    try { bruto = JSON.parse(texto); } catch { throw new Error('Resposta da IA fora do formato esperado.'); }
+    const recomendacao = ['aprovar', 'revisar', 'rejeitar'].includes(bruto.recomendacao) ? bruto.recomendacao : 'revisar';
+    return {
+      recomendacao,
+      resumo: String(bruto.resumo || '').trim().slice(0, 800),
+      documento_legivel: Boolean(bruto.documento_legivel),
+      rosto_visivel: Boolean(bruto.rosto_visivel),
+      mesma_pessoa: String(bruto.mesma_pessoa || 'incerto'),
+      nome_confere: String(bruto.nome_confere || 'incerto'),
+    };
+  }
+
+  /** Lê as imagens da verificação, chama a IA e grava a recomendação. */
+  async function analisarVerificacaoEAplicar(db, uploads, verificacaoId) {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const v = db.verificacoes.buscar(verificacaoId);
+    if (!v || v.status !== 'em_analise') return null;
+    const ler = (nome) => {
+      if (!nome) return null;
+      const caminho = uploads.caminhoPrivado(nome);
+      if (!fs.existsSync(caminho)) return null;
+      const ext = path.extname(caminho).toLowerCase();
+      const tipo = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
+      return { base64: fs.readFileSync(caminho).toString('base64'), tipo };
+    };
+    const selfie = ler(v.selfie);
+    const documento = ler(v.documento);
+    const analise = await analisarVerificacao({
+      selfieBase64: selfie && selfie.base64, selfieTipo: selfie && selfie.tipo,
+      documentoBase64: documento && documento.base64, documentoTipo: documento && documento.tipo,
+      nome: v.nome, instagram: v.instagram, cidade: [v.cidade, v.estado].filter(Boolean).join('/'), convidadoPor: v.convidado_por,
+    });
+    db.verificacoes.salvarAnaliseIa(verificacaoId, { resumo: analise.resumo, recomendacao: analise.recomendacao });
+    return analise;
+  }
+
+  return { ativo, modelo, analisarOferta, analisarEAplicar, analisarLote, analisarEmSegundoPlano, validar, analisarVerificacao, analisarVerificacaoEAplicar };
 }
 
-module.exports = { criarIa, ESQUEMA_RESPOSTA, SISTEMA };
+const ESQUEMA_VERIFICACAO = {
+  type: 'object',
+  properties: {
+    documento_legivel: { type: 'boolean', description: 'A foto do documento está nítida e dá para ler nome e foto.' },
+    rosto_visivel: { type: 'boolean', description: 'Na selfie aparece um rosto real segurando um documento.' },
+    mesma_pessoa: { type: 'string', enum: ['sim', 'provavel', 'nao', 'incerto'], description: 'A pessoa da selfie parece ser a mesma da foto do documento.' },
+    nome_confere: { type: 'string', enum: ['sim', 'nao', 'incerto'], description: 'O nome legível no documento bate com o nome do cadastro.' },
+    recomendacao: { type: 'string', enum: ['aprovar', 'revisar', 'rejeitar'] },
+    resumo: { type: 'string', description: 'Duas ou três frases para o moderador, em português, sem transcrever números do documento.' },
+  },
+  required: ['documento_legivel', 'rosto_visivel', 'mesma_pessoa', 'nome_confere', 'recomendacao', 'resumo'],
+  additionalProperties: false,
+};
+
+const SISTEMA_VERIFICACAO = `Você faz a triagem de verificações de identidade de uma rede social brasileira.
+Cada verificação tem uma selfie da pessoa segurando um documento e uma foto do documento (RG ou CNH).
+
+Avalie apenas:
+- se o documento está legível (nome e foto visíveis);
+- se a selfie mostra um rosto real segurando um documento (não é foto de tela, não é imagem baixada);
+- se a pessoa da selfie parece a mesma da foto do documento;
+- se o nome do documento bate com o nome do cadastro (empresas podem cadastrar o nome do responsável).
+
+Recomende "aprovar" quando tudo confere com clareza, "rejeitar" quando há sinal forte de fraude ou as imagens
+não servem (ilegíveis, não é documento, não é selfie), e "revisar" em qualquer dúvida.
+Nunca avalie aparência, opinião, religião ou política da pessoa; isso não é critério.
+No resumo, nunca transcreva números de documento, CPF ou endereço. Responda apenas com o JSON pedido.`;
+
+module.exports = { criarIa, ESQUEMA_RESPOSTA, SISTEMA, ESQUEMA_VERIFICACAO, SISTEMA_VERIFICACAO };

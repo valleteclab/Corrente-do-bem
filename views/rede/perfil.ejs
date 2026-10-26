@@ -1,0 +1,80 @@
+<%- include('../partials/head') %>
+
+<section class="perfil-cab">
+  <%- include('../partials/avatar', { pessoa: perfil, tamanho: 'avatar-grande' }) %>
+  <div>
+    <h1><%= perfil.nome %> <% if (perfil.status_verificacao === 'verificado') { %><span class="selo selo-grande" title="Membro verificado">✓ verificado</span><% } else { %><span class="badge badge-<%= perfil.status_verificacao %>"><%= rotulos.verificacao[perfil.status_verificacao] %></span><% } %></h1>
+    <p class="muted"><%= rotulos.tipoUsuario[perfil.tipo] %><%= perfil.categoria ? ' · ' + perfil.categoria : '' %><%= perfil.cidade ? ' · ' + perfil.cidade : '' %><%= perfil.estado ? '/' + perfil.estado : '' %> · membro desde <%= formatarData(perfil.criado_em) %></p>
+    <% if (perfil.convidante) { %><p class="mini muted">Convidado(a) por <a href="/u/<%= perfil.convidante.id %>"><%= perfil.convidante.nome %></a></p><% } %>
+    <% if (perfil.nota_media) { %><p class="estrelas">★ <%= perfil.nota_media %> <span class="muted">(<%= perfil.total_avaliacoes %> avaliações)</span></p><% } %>
+    <p class="contatos">
+      <% if (perfil.instagram) { %><a href="https://instagram.com/<%= encodeURIComponent(perfil.instagram) %>" target="_blank" rel="noopener">@<%= perfil.instagram %></a><% } %>
+      <% if (perfil.site) { %> · <a href="<%= perfil.site.startsWith('http') ? perfil.site : 'https://' + perfil.site %>" target="_blank" rel="noopener">site</a><% } %>
+      <% if (mostrarContato && perfil.whatsapp) { %> · <a href="<%= linkWhatsapp(perfil.whatsapp, 'Oi! Te encontrei na ' + config.nome_rede + '.') %>" target="_blank" rel="noopener" class="btn btn-pequeno btn-whatsapp">WhatsApp</a><% } %>
+      <% if (!mostrarContato && perfil.whatsapp === '' && !souEu) { %><span class="mini muted">Contato visível para membros verificados.</span><% } %>
+    </p>
+    <% if (souEu) { %><a href="/perfil" class="btn btn-pequeno btn-secundario">Editar perfil</a><% } %>
+  </div>
+</section>
+
+<% if (perfil.bio) { %><section><p class="texto-bio"><%= perfil.bio %></p></section><% } %>
+
+<% if (perfil.tipo === 'empresa') { %>
+<section>
+  <h2>Avaliações</h2>
+  <% if (usuario && usuario.status_verificacao === 'verificado' && !souEu) { %>
+    <form method="post" action="/u/<%= perfil.id %>/avaliar" class="form form-avaliar">
+      <label>Sua nota
+        <select name="nota"><% for (const n of [5,4,3,2,1]) { %><option value="<%= n %>"><%= '★'.repeat(n) %></option><% } %></select>
+      </label>
+      <label>Comentário (opcional)
+        <input type="text" name="texto" maxlength="600" placeholder="Como foi?">
+      </label>
+      <button class="btn btn-pequeno">Avaliar</button>
+    </form>
+  <% } %>
+  <% if (avaliacoes.length === 0) { %>
+    <p class="vazio">Ainda sem avaliações.</p>
+  <% } else { %>
+    <ul class="lista-simples-cards">
+      <% for (const a of avaliacoes) { %>
+        <li><strong><%= '★'.repeat(a.nota) %></strong> <%= a.texto %> <span class="muted mini">— <%= a.autor_nome %>, <%= formatarData(a.criado_em) %></span></li>
+      <% } %>
+    </ul>
+  <% } %>
+</section>
+
+<% if (vagas.length) { %>
+<section>
+  <h2>Vagas desta empresa</h2>
+  <ul class="lista-simples-cards">
+    <% for (const v of vagas) { %>
+      <li><a href="/vagas/<%= v.id %>"><strong><%= v.titulo %></strong></a> · <%= v.tipo %><%= v.cidade ? ' · ' + v.cidade : '' %> <% if (!v.aberta) { %><span class="badge badge-cancelada">fechada</span><% } %></li>
+    <% } %>
+  </ul>
+</section>
+<% } %>
+<% } %>
+
+<% if (posts.length) { %>
+<section>
+  <h2>Publicações</h2>
+  <ul class="posts">
+    <% for (const p of posts) { %>
+      <li class="post"><p class="post-texto"><%= p.texto %></p><span class="muted mini"><%= formatarData(p.criado_em) %></span></li>
+    <% } %>
+  </ul>
+</section>
+<% } %>
+
+<% if (usuario && !souEu) { %>
+<details class="denuncia">
+  <summary class="link mini">Denunciar este perfil</summary>
+  <form method="post" action="/u/<%= perfil.id %>/denunciar" class="inline-form">
+    <input type="text" name="motivo" maxlength="300" placeholder="Motivo">
+    <button class="btn btn-pequeno btn-perigo">Enviar denúncia</button>
+  </form>
+</details>
+<% } %>
+
+<%- include('../partials/foot') %>

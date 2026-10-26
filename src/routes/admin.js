@@ -3,6 +3,7 @@
 const crypto = require('node:crypto');
 const express = require('express');
 const { CATEGORIAS, STATUS_OFERTA, STATUS_PEDIDO } = require('../db');
+const { STATUS_VERIFICACAO } = require('../db-rede');
 
 function texto(valor, max = 500) {
   return String(valor ?? '').replace(/\r/g, '').trim().slice(0, max);
@@ -23,7 +24,7 @@ function senhasIguais(a, b) {
   return crypto.timingSafeEqual(ha, hb);
 }
 
-module.exports = function criarRotasAdmin(db, { senha, ia }) {
+module.exports = function criarRotasAdmin(db, { senha, ia, uploads }) {
   const router = express.Router();
   const painelAtivo = Boolean(senha);
 
@@ -43,8 +44,13 @@ module.exports = function criarRotasAdmin(db, { senha, ia }) {
     return lista.length;
   }
 
+  /** Moderador: senha do painel (cookie admin) ou membro com papel "moderador". */
+  function ehModerador(req) {
+    return req.signedCookies.admin === 'ok' || (req.usuario && req.usuario.papel === 'moderador');
+  }
+
   router.get('/login', (req, res) => {
-    if (req.signedCookies.admin === 'ok') return res.redirect('/admin');
+    if (ehModerador(req)) return res.redirect('/admin');
     res.render('admin/login', { titulo: 'Entrar no painel', painelAtivo, erro: null });
   });
 
@@ -66,25 +72,147 @@ module.exports = function criarRotasAdmin(db, { senha, ia }) {
     res.redirect('/');
   });
 
-  // Tudo abaixo exige login.
+  // Tudo abaixo exige moderação.
   router.use((req, res, next) => {
-    if (!painelAtivo || req.signedCookies.admin !== 'ok') return res.redirect('/admin/login');
+    if (!ehModerador(req)) return res.redirect('/admin/login');
     res.locals.admin = true;
     next();
   });
 
   router.get('/', (req, res) => {
     res.render('admin/dashboard', {
-      titulo: 'Painel',
+      titulo: 'Moderação',
       stats: db.estatisticas(),
-      ofertasNovas: comSugestoes(db.ofertas.listar({ status: 'nova' }).slice(0, 8)),
-      ofertasDisponiveis: comSugestoes(db.ofertas.listar({ status: 'disponivel' }).slice(0, 8)),
+      statsRede: db.usuarios.contar(),
+      verificacoes: db.verificacoes.listar({ status: 'em_analise' }).slice(0, 5),
+      denuncias: db.denuncias.listar({ resolvida: 0 }).length,
+      ofertasNovas: comSugestoes(db.ofertas.listar({ status: 'nova' }).slice(0, 5)),
+      ofertasDisponiveis: comSugestoes(db.ofertas.listar({ status: 'disponivel' }).slice(0, 5)),
       pendentesIa: db.ofertas.idsParaAnalise().length,
     });
   });
 
-  // ----- IA -----
-  router.post('/ia/analisar', async (req, res, next) => {
+  // ================= REDE =================
+
+  // ----- verificações -----
+  router.get('/verificacoes', (req, res) => {
+    const status = STATUS_VERIFICACAO.includes(req.query.status) ? req.query.status : 'em_analise';
+    res.render('admin/verificacoes', {
+      titulo: 'Fila de verificação',
+      verificacoes: db.verificacoes.listar({ status }),
+      statusFiltro: status,
+    });
+  });
+
+  // Imagens privadas da verificação: só a moderação vê.
+  router.get('/verificacoes/:id/imagem/:qual', (req, res, next) => {
+    const v = db.verificacoes.buscar(idDe(req.params.id));
+    const nome = v && (req.params.qual === 'selfie' ? v.selfie : req.params.qual === 'documento' ? v.documento : '');
+    if (!nome) return next();
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.sendFile(uploads.caminhoPrivado(nome), (err) => { if (err) next(); });
+  });
+
+  router.post('/verificacoes/:id/decidir', (req, res) => {
+    const id = idDe(req.params.id);
+    const aprovado = req.body.decisao === 'aprovar';
+    const r = id ? db.verificacoes.decidir(id, aprovado, texto(req.body.motivo, 500)) : null;
+    if (r) {
+      uploads.apagarPrivado(r.selfie);
+      uploads.apagarPrivado(r.documento);
+      res.locals.setFlash('ok', aprovado ? 'Membro verificado! As fotos do documento foram apagadas.' : 'Verificação rejeitada. As fotos foram apagadas.');
+    }
+    res.redirect(req.body.voltar || '/admin/verificacoes');
+  });
+
+  router.post('/verificacoes/:id/ia', async (req, res) => {
+    const id = idDe(req.params.id);
+    if (!ia.ativo) { res.locals.setFlash('erro', 'IA desativada. Defina ANTHROPIC_API_KEY.'); return res.redirect('/admin/verificacoes'); }
+    try {
+      const a = id ? await ia.analisarVerificacaoEAplicar(db, uploads, id) : null;
+      res.locals.setFlash('ok', a ? `IA recomenda: ${a.recomendacao}.` : 'Nada para analisar.');
+    } catch (e) {
+      res.locals.setFlash('erro', `IA: ${e.message}`);
+    }
+    res.redirect(req.body.voltar || '/admin/verificacoes');
+  });
+
+  // ----- usuários -----
+  router.get('/usuarios', (req, res) => {
+    const filtro = {
+      status: STATUS_VERIFICACAO.includes(req.query.status) ? req.query.status : '',
+      tipo: ['pessoa', 'empresa'].includes(req.query.tipo) ? req.query.tipo : '',
+      busca: texto(req.query.q, 120),
+    };
+    res.render('admin/usuarios', { titulo: 'Membros', usuarios: db.usuarios.listar(filtro), filtro, statusLista: STATUS_VERIFICACAO });
+  });
+
+  router.post('/usuarios/:id/banir', (req, res) => {
+    const id = idDe(req.params.id);
+    if (id) { db.usuarios.banir(id, req.body.banido !== '0'); res.locals.setFlash('ok', req.body.banido !== '0' ? 'Conta suspensa.' : 'Conta reativada.'); }
+    res.redirect(req.body.voltar || '/admin/usuarios');
+  });
+
+  router.post('/usuarios/:id/status', (req, res) => {
+    const id = idDe(req.params.id);
+    if (id && STATUS_VERIFICACAO.includes(req.body.status)) { db.usuarios.mudarStatusVerificacao(id, req.body.status); res.locals.setFlash('ok', 'Status atualizado.'); }
+    res.redirect(req.body.voltar || '/admin/usuarios');
+  });
+
+  router.post('/usuarios/:id/papel', (req, res) => {
+    const id = idDe(req.params.id);
+    if (id && ['membro', 'moderador'].includes(req.body.papel)) { db.usuarios.mudarPapel(id, req.body.papel); res.locals.setFlash('ok', 'Papel atualizado.'); }
+    res.redirect(req.body.voltar || '/admin/usuarios');
+  });
+
+  router.post('/usuarios/:id/convites', (req, res) => {
+    const id = idDe(req.params.id);
+    const q = Number.parseInt(req.body.quantidade, 10);
+    if (id && Number.isInteger(q) && q > 0 && q <= 100) { db.usuarios.darConvites(id, q); res.locals.setFlash('ok', `${q} convite(s) adicionados.`); }
+    res.redirect(req.body.voltar || '/admin/usuarios');
+  });
+
+  // ----- denúncias -----
+  router.get('/denuncias', (req, res) => {
+    res.render('admin/denuncias', { titulo: 'Denúncias', denuncias: db.denuncias.listar({ resolvida: req.query.resolvidas === '1' ? 1 : 0 }), mostrandoResolvidas: req.query.resolvidas === '1' });
+  });
+
+  router.post('/denuncias/:id/resolver', (req, res) => {
+    const id = idDe(req.params.id);
+    if (id) {
+      if (req.body.remover_post === '1' && idDe(req.body.post_id)) db.posts.remover(idDe(req.body.post_id));
+      db.denuncias.resolver(id);
+      res.locals.setFlash('ok', 'Denúncia resolvida.');
+    }
+    res.redirect('/admin/denuncias');
+  });
+
+  // ----- configurações -----
+  router.get('/config', (req, res) => {
+    res.render('admin/config', { titulo: 'Configurações' });
+  });
+
+  router.post('/config', (req, res) => {
+    db.config.salvar({
+      nome_rede: texto(req.body.nome_rede, 120) || 'Elo Brasil',
+      slogan: texto(req.body.slogan, 200),
+      descricao_rede: texto(req.body.descricao_rede, 4000),
+      cidade_foco: texto(req.body.cidade_foco, 120),
+      cadastro_aberto: req.body.cadastro_aberto === '1' ? '1' : '0',
+      nome_campanha: texto(req.body.nome_campanha, 120) || 'Corrente do Bem',
+      nome_beneficiaria: texto(req.body.nome_beneficiaria, 120) || 'Tia',
+      historia: texto(req.body.historia, 4000),
+      link_video: texto(req.body.link_video, 500),
+      whatsapp_contato: texto(req.body.whatsapp_contato, 40).replace(/\D/g, ''),
+      cidade: texto(req.body.cidade, 120),
+    });
+    res.locals.setFlash('ok', 'Configurações salvas.');
+    res.redirect('/admin/config');
+  });
+
+  // ================= CORRENTE DO BEM =================
+
+  router.post('/corrente/ia/analisar', async (req, res, next) => {
     if (!ia.ativo) {
       res.locals.setFlash('erro', 'IA desativada. Defina ANTHROPIC_API_KEY no servidor.');
       return res.redirect(req.body.voltar || '/admin');
@@ -97,15 +225,15 @@ module.exports = function criarRotasAdmin(db, { senha, ia }) {
         const r = await ia.analisarLote(db, ids);
         res.locals.setFlash(r.erros ? 'erro' : 'ok', `IA analisou ${r.ok} oferta(s)${r.erros ? `, ${r.erros} com erro` : ''}.`);
       }
-      res.redirect(req.body.voltar || '/admin/ofertas');
+      res.redirect(req.body.voltar || '/admin/corrente/ofertas');
     } catch (e) { next(e); }
   });
 
-  router.post('/ofertas/:id/ia', async (req, res, next) => {
+  router.post('/corrente/ofertas/:id/ia', async (req, res) => {
     const id = idDe(req.params.id);
     if (!ia.ativo) {
       res.locals.setFlash('erro', 'IA desativada. Defina ANTHROPIC_API_KEY no servidor.');
-      return res.redirect(req.body.voltar || '/admin/ofertas');
+      return res.redirect(req.body.voltar || '/admin/corrente/ofertas');
     }
     try {
       const analise = id ? await ia.analisarEAplicar(db, id) : null;
@@ -117,63 +245,63 @@ module.exports = function criarRotasAdmin(db, { senha, ia }) {
     } catch (e) {
       res.locals.setFlash('erro', `IA: ${e.message}`);
     }
-    res.redirect(req.body.voltar || '/admin/ofertas');
+    res.redirect(req.body.voltar || '/admin/corrente/ofertas');
   });
 
   // ----- necessidades -----
-  router.get('/necessidades', (req, res) => {
-    res.render('admin/necessidades', { titulo: 'O que ela precisa', necessidades: db.necessidades.listar(), editando: null });
+  router.get('/corrente/necessidades', (req, res) => {
+    res.render('admin/corrente/necessidades', { titulo: 'O que ela precisa', necessidades: db.necessidades.listar(), editando: null });
   });
 
-  router.get('/necessidades/:id/editar', (req, res) => {
+  router.get('/corrente/necessidades/:id/editar', (req, res) => {
     const n = db.necessidades.buscar(idDe(req.params.id));
-    if (!n) return res.redirect('/admin/necessidades');
-    res.render('admin/necessidades', { titulo: 'Editar necessidade', necessidades: db.necessidades.listar(), editando: n });
+    if (!n) return res.redirect('/admin/corrente/necessidades');
+    res.render('admin/corrente/necessidades', { titulo: 'Editar necessidade', necessidades: db.necessidades.listar(), editando: n });
   });
 
-  router.post('/necessidades', (req, res) => {
+  router.post('/corrente/necessidades', (req, res) => {
     const titulo = texto(req.body.titulo, 200);
-    if (!titulo) { res.locals.setFlash('erro', 'O título é obrigatório.'); return res.redirect('/admin/necessidades'); }
+    if (!titulo) { res.locals.setFlash('erro', 'O título é obrigatório.'); return res.redirect('/admin/corrente/necessidades'); }
     db.necessidades.criar({ titulo, descricao: texto(req.body.descricao, 1000), categoria: categoriaValida(req.body.categoria) });
     res.locals.setFlash('ok', 'Necessidade adicionada.');
-    res.redirect('/admin/necessidades');
+    res.redirect('/admin/corrente/necessidades');
   });
 
-  router.post('/necessidades/:id/editar', (req, res) => {
+  router.post('/corrente/necessidades/:id/editar', (req, res) => {
     const id = idDe(req.params.id);
     const titulo = texto(req.body.titulo, 200);
     if (id && titulo) {
       db.necessidades.atualizar(id, { titulo, descricao: texto(req.body.descricao, 1000), categoria: categoriaValida(req.body.categoria) });
       res.locals.setFlash('ok', 'Necessidade atualizada.');
     }
-    res.redirect('/admin/necessidades');
+    res.redirect('/admin/corrente/necessidades');
   });
 
-  router.post('/necessidades/:id/recebida', (req, res) => {
+  router.post('/corrente/necessidades/:id/recebida', (req, res) => {
     const id = idDe(req.params.id);
     if (id) {
       db.necessidades.marcarRecebida(id);
       res.locals.setFlash('ok', 'Marcada como recebida. As ofertas pendentes para esse item agora estão disponíveis para repasse.');
     }
-    res.redirect(req.body.voltar || '/admin/necessidades');
+    res.redirect(req.body.voltar || '/admin/corrente/necessidades');
   });
 
-  router.post('/necessidades/:id/reabrir', (req, res) => {
+  router.post('/corrente/necessidades/:id/reabrir', (req, res) => {
     const id = idDe(req.params.id);
     if (id) { db.necessidades.reabrir(id); res.locals.setFlash('ok', 'Necessidade reaberta.'); }
-    res.redirect('/admin/necessidades');
+    res.redirect('/admin/corrente/necessidades');
   });
 
-  router.post('/necessidades/:id/remover', (req, res) => {
+  router.post('/corrente/necessidades/:id/remover', (req, res) => {
     const id = idDe(req.params.id);
     if (id) { db.necessidades.remover(id); res.locals.setFlash('ok', 'Necessidade removida.'); }
-    res.redirect('/admin/necessidades');
+    res.redirect('/admin/corrente/necessidades');
   });
 
   // ----- ofertas -----
-  router.get('/ofertas', (req, res) => {
+  router.get('/corrente/ofertas', (req, res) => {
     const status = STATUS_OFERTA.includes(req.query.status) ? req.query.status : '';
-    res.render('admin/ofertas', {
+    res.render('admin/corrente/ofertas', {
       titulo: 'Ofertas de doação',
       ofertas: comSugestoes(db.ofertas.listar(status ? { status } : {})),
       statusFiltro: status,
@@ -183,7 +311,7 @@ module.exports = function criarRotasAdmin(db, { senha, ia }) {
     });
   });
 
-  router.post('/ofertas/:id/status', (req, res) => {
+  router.post('/corrente/ofertas/:id/status', (req, res) => {
     const id = idDe(req.params.id);
     const status = req.body.status;
     if (id && STATUS_OFERTA.includes(status)) {
@@ -191,10 +319,10 @@ module.exports = function criarRotasAdmin(db, { senha, ia }) {
       else db.ofertas.mudarStatus(id, status, req.body.observacao !== undefined ? texto(req.body.observacao, 1000) : undefined);
       res.locals.setFlash('ok', 'Oferta atualizada.');
     }
-    res.redirect(req.body.voltar || '/admin/ofertas');
+    res.redirect(req.body.voltar || '/admin/corrente/ofertas');
   });
 
-  router.post('/ofertas/:id/repassar', (req, res) => {
+  router.post('/corrente/ofertas/:id/repassar', (req, res) => {
     const id = idDe(req.params.id);
     const pedidoId = idDe(req.body.pedido_id);
     if (id && pedidoId) {
@@ -207,28 +335,28 @@ module.exports = function criarRotasAdmin(db, { senha, ia }) {
     } else {
       res.locals.setFlash('erro', 'Escolha para quem repassar.');
     }
-    res.redirect(req.body.voltar || '/admin/ofertas');
+    res.redirect(req.body.voltar || '/admin/corrente/ofertas');
   });
 
-  router.post('/ofertas/:id/observacao', (req, res) => {
+  router.post('/corrente/ofertas/:id/observacao', (req, res) => {
     const id = idDe(req.params.id);
     if (id) {
       const o = db.ofertas.buscar(id);
       if (o) db.ofertas.mudarStatus(id, o.status, texto(req.body.observacao, 1000));
     }
-    res.redirect(req.body.voltar || '/admin/ofertas');
+    res.redirect(req.body.voltar || '/admin/corrente/ofertas');
   });
 
-  router.post('/ofertas/:id/remover', (req, res) => {
+  router.post('/corrente/ofertas/:id/remover', (req, res) => {
     const id = idDe(req.params.id);
     if (id) { db.ofertas.remover(id); res.locals.setFlash('ok', 'Oferta removida.'); }
-    res.redirect('/admin/ofertas');
+    res.redirect('/admin/corrente/ofertas');
   });
 
   // ----- pedidos -----
-  router.get('/pedidos', (req, res) => {
+  router.get('/corrente/pedidos', (req, res) => {
     const status = STATUS_PEDIDO.includes(req.query.status) ? req.query.status : '';
-    res.render('admin/pedidos', {
+    res.render('admin/corrente/pedidos', {
       titulo: 'Pedidos de ajuda',
       pedidos: db.pedidos.listar(status ? { status } : {}),
       statusFiltro: status,
@@ -236,37 +364,19 @@ module.exports = function criarRotasAdmin(db, { senha, ia }) {
     });
   });
 
-  router.post('/pedidos/:id/status', (req, res) => {
+  router.post('/corrente/pedidos/:id/status', (req, res) => {
     const id = idDe(req.params.id);
     if (id && STATUS_PEDIDO.includes(req.body.status)) {
       db.pedidos.mudarStatus(id, req.body.status);
       res.locals.setFlash('ok', 'Pedido atualizado.');
     }
-    res.redirect(req.body.voltar || '/admin/pedidos');
+    res.redirect(req.body.voltar || '/admin/corrente/pedidos');
   });
 
-  router.post('/pedidos/:id/remover', (req, res) => {
+  router.post('/corrente/pedidos/:id/remover', (req, res) => {
     const id = idDe(req.params.id);
     if (id) { db.pedidos.remover(id); res.locals.setFlash('ok', 'Pedido removido.'); }
-    res.redirect('/admin/pedidos');
-  });
-
-  // ----- configurações -----
-  router.get('/config', (req, res) => {
-    res.render('admin/config', { titulo: 'Configurações da campanha' });
-  });
-
-  router.post('/config', (req, res) => {
-    db.config.salvar({
-      nome_campanha: texto(req.body.nome_campanha, 120) || 'Corrente do Bem',
-      nome_beneficiaria: texto(req.body.nome_beneficiaria, 120) || 'Tia',
-      historia: texto(req.body.historia, 4000),
-      link_video: texto(req.body.link_video, 500),
-      whatsapp_contato: texto(req.body.whatsapp_contato, 40).replace(/\D/g, ''),
-      cidade: texto(req.body.cidade, 120),
-    });
-    res.locals.setFlash('ok', 'Configurações salvas.');
-    res.redirect('/admin/config');
+    res.redirect('/admin/corrente/pedidos');
   });
 
   return router;

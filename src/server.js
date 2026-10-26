@@ -6,12 +6,18 @@ const cookieParser = require('cookie-parser');
 
 const { abrirBanco, CATEGORIAS } = require('./db');
 const { criarIa } = require('./ia');
-const criarRotasPublicas = require('./routes/publico');
+const { criarAuth } = require('./auth');
+const { criarUploads } = require('./upload');
+const criarRotasAuth = require('./routes/auth');
+const criarRotasRede = require('./routes/rede');
+const criarRotasCorrente = require('./routes/publico');
 const criarRotasAdmin = require('./routes/admin');
 
 function criarApp(opcoes = {}) {
   const db = opcoes.db || abrirBanco(opcoes.caminhoBanco);
   const ia = opcoes.ia || criarIa();
+  const uploads = opcoes.uploads || criarUploads(opcoes.dirUploads);
+  const auth = criarAuth(db);
   const adminSenha = opcoes.adminSenha ?? process.env.ADMIN_PASSWORD ?? '';
   const segredo = opcoes.segredo ?? process.env.SESSION_SECRET ?? adminSenha ?? 'troque-este-segredo';
 
@@ -24,6 +30,7 @@ function criarApp(opcoes = {}) {
   app.use(express.urlencoded({ extended: false, limit: '50kb' }));
   app.use(cookieParser(segredo));
   app.use(express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h' }));
+  app.use('/uploads/fotos', express.static(uploads.dirFotos, { maxAge: '7d', index: false, dotfiles: 'deny' }));
 
   // Dados comuns a todas as páginas.
   app.use((req, res, next) => {
@@ -35,6 +42,9 @@ function criarApp(opcoes = {}) {
     res.locals.rotulos = ROTULOS;
     res.locals.formatarData = formatarData;
     res.locals.linkWhatsapp = linkWhatsapp;
+    res.locals.urlFoto = urlFoto;
+    res.locals.urlBase = process.env.URL_BASE || `${req.protocol}://${req.get('host')}`;
+    res.locals.iniciais = iniciais;
     res.locals.flash = req.signedCookies.flash ? safeJson(req.signedCookies.flash) : null;
     if (res.locals.flash) res.clearCookie('flash');
     res.locals.setFlash = (tipo, mensagem) => {
@@ -42,10 +52,13 @@ function criarApp(opcoes = {}) {
     };
     next();
   });
+  app.use(auth.carregarUsuario);
 
   app.get('/health', (req, res) => res.json({ ok: true }));
-  app.use('/', criarRotasPublicas(db, ia));
-  app.use('/admin', criarRotasAdmin(db, { senha: adminSenha, segredo, ia }));
+  app.use('/', criarRotasAuth(db, auth));
+  app.use('/', criarRotasRede(db, { auth, uploads, ia }));
+  app.use('/corrente', criarRotasCorrente(db, ia));
+  app.use('/admin', criarRotasAdmin(db, { senha: adminSenha, segredo, ia, uploads }));
 
   app.use((req, res) => {
     res.status(404).render('erro', { titulo: 'Página não encontrada', mensagem: 'Essa página não existe.' });
@@ -76,6 +89,8 @@ const ROTULOS = {
     cancelada: 'Cancelada',
   },
   pedido: { aberto: 'Aguardando', atendido: 'Atendido', cancelado: 'Cancelado' },
+  verificacao: { pendente: 'Não enviou', em_analise: 'Em análise', verificado: 'Verificado', rejeitado: 'Rejeitado' },
+  tipoUsuario: { pessoa: 'Pessoa', empresa: 'Empresa' },
 };
 
 function formatarData(texto) {
@@ -93,17 +108,25 @@ function linkWhatsapp(numero, mensagem) {
   return `https://wa.me/${completo}${texto}`;
 }
 
+function urlFoto(nome) {
+  return nome ? `/uploads/fotos/${encodeURIComponent(nome)}` : '';
+}
+
+function iniciais(nome) {
+  return String(nome || '?').trim().split(/\s+/).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
+}
+
 if (require.main === module) {
   const porta = Number(process.env.PORT || 3000);
   if (!process.env.ADMIN_PASSWORD) {
     console.warn('AVISO: ADMIN_PASSWORD não definida. O painel /admin ficará bloqueado até você definir essa variável.');
   }
   if (!process.env.ANTHROPIC_API_KEY) {
-    console.warn('AVISO: ANTHROPIC_API_KEY não definida. As sugestões de repasse por IA ficarão desativadas.');
+    console.warn('AVISO: ANTHROPIC_API_KEY não definida. A triagem por IA ficará desativada.');
   }
   const app = criarApp();
   app.listen(porta, () => {
-    console.log(`Corrente do Bem rodando em http://localhost:${porta}`);
+    console.log(`Rodando em http://localhost:${porta}`);
   });
 }
 
