@@ -1,0 +1,46 @@
+<%- include('../partials/head') %>
+
+<h1>Meu currículo</h1>
+<p class="lead">Preencha para as empresas da rede te encontrarem em <a href="/talentos">Talentos</a>. Só membros com selo veem seu currículo completo.</p>
+
+<% if (erros.length) { %>
+  <div class="aviso aviso-erro"><ul><% for (const e of erros) { %><li><%= e %></li><% } %></ul></div>
+<% } %>
+
+<div class="duas-colunas">
+<section class="coluna-principal">
+  <form method="post" action="/curriculo" class="form">
+    <label class="radio"><input type="checkbox" name="procura_emprego" value="1" <%= valores.procura_emprego ? 'checked' : '' %>> <strong>Estou procurando trabalho</strong> (aparecer em Talentos)</label>
+    <label>Profissão ou área
+      <input type="text" name="profissao" maxlength="120" value="<%= valores.profissao || '' %>" placeholder="Ex.: Eletricista, Vendedora, Desenvolvedor, Auxiliar administrativo...">
+    </label>
+    <label>Resumo profissional
+      <textarea name="curriculo" rows="10" maxlength="4000" placeholder="Experiência, formação, cursos, disponibilidade, pretensão..."><%= valores.curriculo || '' %></textarea>
+      <small>Dica: comece pelo que você faz de melhor e pelos últimos trabalhos.</small>
+    </label>
+    <button class="btn">Salvar currículo</button>
+  </form>
+</section>
+
+<aside class="coluna-lateral">
+  <div class="caixa">
+    <h3>📎 Currículo em PDF (opcional)</h3>
+    <% if (valores.curriculo_arquivo) { %>
+      <p><a href="/u/<%= usuario.id %>/curriculo" target="_blank">Ver meu PDF</a></p>
+      <form method="post" action="/curriculo/arquivo/remover"><button class="btn btn-pequeno btn-perigo">Remover PDF</button></form>
+    <% } %>
+    <form method="post" action="/curriculo/arquivo" enctype="multipart/form-data" class="form form-foto">
+      <label class="mini">PDF até 5 MB
+        <input type="file" name="curriculo_arquivo" accept="application/pdf" required>
+      </label>
+      <button class="btn btn-pequeno">Enviar PDF</button>
+    </form>
+  </div>
+  <div class="caixa">
+    <h3>Vagas</h3>
+    <p><a href="/vagas">Ver vagas abertas</a><br><a href="/vagas/nova">Publicar uma vaga</a></p>
+  </div>
+</aside>
+</div>
+
+<%- include('../partials/foot') %>

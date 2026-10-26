@@ -15,14 +15,17 @@
   <div class="container topo-inner">
     <a href="/" class="marca"><span class="marca-icone"></span><%= config.nome_rede %></a>
     <nav class="nav">
-      <% if (admin) { %>
+      <% if (admin && papelPainel === 'verificador') { %>
+        <a href="/feed">← Voltar à rede</a>
+        <a href="/admin/verificacoes" class="ativo">Fila do selo</a>
+      <% } else if (admin) { %>
         <a href="/admin" class="<%= caminho === '/admin' ? 'ativo' : '' %>">Moderação</a>
         <a href="/admin/verificacoes" class="<%= caminho.startsWith('/admin/verificacoes') ? 'ativo' : '' %>">Verificações</a>
         <a href="/admin/usuarios" class="<%= caminho.startsWith('/admin/usuarios') ? 'ativo' : '' %>">Membros</a>
         <a href="/admin/denuncias" class="<%= caminho.startsWith('/admin/denuncias') ? 'ativo' : '' %>">Denúncias</a>
         <a href="/admin/corrente/ofertas" class="<%= caminho.startsWith('/admin/corrente') ? 'ativo' : '' %>">Corrente</a>
         <a href="/admin/config" class="<%= caminho.startsWith('/admin/config') ? 'ativo' : '' %>">Config</a>
-        <form method="post" action="/admin/sair" class="inline"><button class="link">Sair</button></form>
+        <% if (usuario) { %><a href="/feed">← Rede</a><% } else { %><form method="post" action="/admin/sair" class="inline"><button class="link">Sair</button></form><% } %>
       <% } else { %>
         <a href="/diretorio" class="<%= caminho.startsWith('/diretorio') ? 'ativo' : '' %>">Diretório</a>
         <a href="/vagas" class="<%= caminho.startsWith('/vagas') ? 'ativo' : '' %>">Vagas</a>
@@ -30,6 +33,7 @@
         <a href="/corrente" class="<%= caminho.startsWith('/corrente') ? 'ativo' : '' %>">Corrente do Bem</a>
         <% if (usuario) { %>
           <a href="/feed" class="<%= caminho.startsWith('/feed') ? 'ativo' : '' %>">Feed</a>
+          <% if (usuario.papel === 'verificador') { %><a href="/admin/verificacoes" title="Fila do selo">🛡️ Fila</a><% } else if (usuario.papel === 'moderador') { %><a href="/admin" title="Painel de moderação">🛡️ Painel</a><% } %>
           <a href="/perfil" class="avatar-link <%= caminho.startsWith('/perfil') ? 'ativo' : '' %>" title="Meu perfil">
             <% if (usuario.foto) { %><img class="avatar avatar-mini" src="<%= urlFoto(usuario.foto) %>" alt=""><% } else { %><span class="avatar avatar-mini"><%= iniciais(usuario.nome) %></span><% } %>
             <%= usuario.nome.split(' ')[0] %>

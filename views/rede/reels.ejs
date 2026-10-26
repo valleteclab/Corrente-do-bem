@@ -1,0 +1,16 @@
+<%- include('../partials/head') %>
+
+<nav class="abas abas-feed">
+  <a href="/feed">📰 Feed</a>
+  <a href="/reels" class="ativo">🎬 Reels</a>
+</nav>
+
+<% if (posts.length === 0) { %>
+  <p class="vazio">Nenhum vídeo ainda. Publique o primeiro reel pelo feed (botão 🎬 Vídeo).</p>
+<% } else { %>
+  <ul class="posts reels">
+    <% for (const p of posts) { %><%- include('../partials/post', { p, voltar: '/reels', compacto: false }) %><% } %>
+  </ul>
+<% } %>
+
+<%- include('../partials/foot') %>

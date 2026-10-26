@@ -1,12 +1,24 @@
 <%- include('../partials/head') %>
 
+<nav class="abas abas-feed">
+  <a href="/vagas" class="ativo">💼 Vagas</a>
+  <a href="/talentos">🧑‍💼 Talentos</a>
+</nav>
+
 <div class="titulo-acao">
   <h1>Vagas</h1>
-  <% if (usuario && usuario.tipo === 'empresa' && usuario.status_verificacao === 'verificado') { %>
-    <a href="/vagas/nova" class="btn">+ Publicar vaga</a>
-  <% } %>
+  <div class="acoes" style="margin-top:0">
+    <% if (usuario && usuario.status_verificacao === 'verificado') { %>
+      <a href="/vagas/nova" class="btn">+ Publicar vaga</a>
+    <% } else if (usuario) { %>
+      <a href="/verificacao" class="btn btn-secundario">Pegue o selo para publicar vagas</a>
+    <% } else { %>
+      <a href="/entrar?voltar=/vagas/nova" class="btn btn-secundario">Entre para publicar vaga</a>
+    <% } %>
+    <% if (!usuario || usuario.tipo === 'pessoa') { %><a href="/curriculo" class="btn btn-secundario">📄 Cadastrar meu currículo</a><% } %>
+  </div>
 </div>
-<p class="lead">Oportunidades publicadas por empresas verificadas da rede. Membros verificados se candidatam com um clique.</p>
+<p class="lead">Oportunidades publicadas por membros e empresas da rede. Quem tem o selo se candidata com um clique.</p>
 
 <form method="get" action="/vagas" class="filtro filtro-linha">
   <input type="text" name="cidade" placeholder="Filtrar por cidade" value="<%= cidadeFiltro %>" maxlength="120">
@@ -14,7 +26,7 @@
 </form>
 
 <% if (vagas.length === 0) { %>
-  <p class="vazio">Nenhuma vaga aberta no momento.</p>
+  <p class="vazio">Nenhuma vaga aberta no momento. <% if (usuario && usuario.status_verificacao === 'verificado') { %><a href="/vagas/nova">Publique a primeira</a>.<% } %></p>
 <% } else { %>
   <ul class="lista-admin">
     <% for (const v of vagas) { %>

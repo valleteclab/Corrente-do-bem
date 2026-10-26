@@ -33,6 +33,7 @@ function criarApp(opcoes = {}) {
   app.use(cookieParser(segredo));
   app.use(express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h' }));
   app.use('/uploads/fotos', express.static(uploads.dirFotos, { maxAge: '7d', index: false, dotfiles: 'deny' }));
+  app.use('/uploads/posts', express.static(uploads.dirPosts, { maxAge: '7d', index: false, dotfiles: 'deny', acceptRanges: true }));
 
   // Dados comuns a todas as páginas.
   app.use((req, res, next) => {
@@ -40,11 +41,15 @@ function criarApp(opcoes = {}) {
     res.locals.categorias = CATEGORIAS;
     res.locals.caminho = req.originalUrl;
     res.locals.admin = false;
+    res.locals.papelPainel = '';
+    res.locals.linkificar = linkificar;
+    res.locals.embedsDe = embedsDe;
     res.locals.iaAtiva = ia.ativo;
     res.locals.rotulos = ROTULOS;
     res.locals.formatarData = formatarData;
     res.locals.linkWhatsapp = linkWhatsapp;
     res.locals.urlFoto = urlFoto;
+    res.locals.urlMidia = (nome) => (nome ? `/uploads/posts/${encodeURIComponent(nome)}` : '');
     res.locals.urlBase = process.env.URL_BASE || `${req.protocol}://${req.get('host')}`;
     res.locals.iniciais = iniciais;
     res.locals.nivelDe = gamificacao.nivelDe;
@@ -113,6 +118,37 @@ function linkWhatsapp(numero, mensagem) {
 
 function urlFoto(nome) {
   return nome ? `/uploads/fotos/${encodeURIComponent(nome)}` : '';
+}
+
+const RE_URL = /https?:\/\/[^\s<]+/g;
+
+function escaparHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/** Escapa o texto e transforma URLs em links. */
+function linkificar(texto) {
+  return escaparHtml(texto || '').replace(RE_URL, (url) => {
+    const limpa = url.replace(/[.,;:!?)]+$/, '');
+    const sobra = url.slice(limpa.length);
+    return `<a href="${limpa}" target="_blank" rel="noopener nofollow">${limpa}</a>${sobra}`;
+  });
+}
+
+/**
+ * Links do Instagram e YouTube no texto viram embeds (o conteúdo fica no site de origem;
+ * não baixamos as fotos). Retorna [{ tipo: 'instagram'|'youtube', url }].
+ */
+function embedsDe(texto) {
+  const out = [];
+  const vistos = new Set();
+  for (const url of String(texto || '').match(RE_URL) || []) {
+    let m = url.match(/instagram\.com\/(?:[\w.]+\/)?(?:p|reel|reels|tv)\/([\w-]+)/i);
+    if (m && !vistos.has('ig' + m[1])) { vistos.add('ig' + m[1]); out.push({ tipo: 'instagram', url: `https://www.instagram.com/p/${m[1]}/embed/` }); continue; }
+    m = url.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{6,})/i);
+    if (m && !vistos.has('yt' + m[1])) { vistos.add('yt' + m[1]); out.push({ tipo: 'youtube', url: `https://www.youtube-nocookie.com/embed/${m[1]}` }); }
+  }
+  return out.slice(0, 2);
 }
 
 function iniciais(nome) {

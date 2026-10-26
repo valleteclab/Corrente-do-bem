@@ -11,6 +11,8 @@ const ACOES = {
   convidado_entrou: { pontos: 30, rotulo: 'Trouxe um membro' },
   perfil_completo: { pontos: 20, rotulo: 'Completou o perfil' },
   post: { pontos: 5, rotulo: 'Publicou no feed', limiteDia: 3 },
+  comentou: { pontos: 2, rotulo: 'Comentou uma publicação', limiteDia: 10 },
+  curriculo: { pontos: 15, rotulo: 'Cadastrou o currículo' },
   avaliou: { pontos: 10, rotulo: 'Avaliou uma empresa' },
   foi_avaliado: { pontos: 10, rotulo: 'Recebeu uma avaliação' },
   vaga: { pontos: 15, rotulo: 'Publicou uma vaga' },

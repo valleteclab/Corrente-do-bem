@@ -2,15 +2,30 @@
 
 <div class="duas-colunas">
 <section class="coluna-principal">
-  <h1>Feed</h1>
+  <nav class="abas abas-feed">
+    <a href="/feed" class="ativo">📰 Feed</a>
+    <a href="/reels">🎬 Reels</a>
+  </nav>
 
   <% if (usuario.status_verificacao === 'verificado') { %>
-    <form method="post" action="/post" class="form form-post">
-      <textarea name="texto" rows="3" maxlength="2000" required placeholder="Compartilhe algo com a comunidade de <%= usuario.cidade || 'sua cidade' %>..."></textarea>
-      <button class="btn">Publicar</button>
+    <form method="post" action="/post" enctype="multipart/form-data" class="form form-post" id="form-post">
+      <div class="post-cab">
+        <%- include('../partials/avatar', { pessoa: usuario, tamanho: 'avatar-mini' }) %>
+        <textarea name="texto" rows="2" maxlength="2000" placeholder="Compartilhe algo com a comunidade de <%= usuario.cidade || 'sua cidade' %>..."></textarea>
+      </div>
+      <div class="post-ferramentas">
+        <label class="btn btn-pequeno btn-secundario">📷 Fotos (até 4)
+          <input type="file" name="midias" accept="image/jpeg,image/png,image/webp" multiple hidden onchange="document.getElementById('previa').textContent = this.files.length + ' foto(s) selecionada(s)'; document.getElementById('video-input').value=''">
+        </label>
+        <label class="btn btn-pequeno btn-secundario">🎬 Vídeo (reel)
+          <input type="file" name="midias" id="video-input" accept="video/mp4,video/webm,video/quicktime" hidden onchange="document.getElementById('previa').textContent = this.files.length ? 'vídeo: ' + this.files[0].name : ''">
+        </label>
+        <span id="previa" class="mini muted"></span>
+        <button class="btn btn-pequeno">Publicar</button>
+      </div>
     </form>
   <% } else { %>
-    <div class="aviso aviso-info">Para publicar, <a href="/verificacao">complete sua verificação</a>.</div>
+    <div class="aviso aviso-info">Para publicar, curtir e comentar, <a href="/verificacao">pegue seu selo <%= config.nome_selo %></a>.</div>
   <% } %>
 
   <form method="get" action="/feed" class="filtro filtro-linha">
@@ -23,32 +38,7 @@
     <p class="vazio">Nenhuma publicação ainda. Seja o primeiro!</p>
   <% } else { %>
     <ul class="posts">
-      <% for (const p of posts) { %>
-        <li class="post">
-          <div class="post-cab">
-            <%- include('../partials/avatar', { pessoa: p, tamanho: 'avatar-mini' }) %>
-            <div>
-              <a href="/u/<%= p.usuario_id %>"><strong><%= p.nome %></strong></a>
-              <% if (p.status_verificacao === 'verificado') { %><span class="selo" title="Selo <%= config.nome_selo %>">✓</span><% } %>
-              <span class="muted mini"><%= p.cidade ? p.cidade + ' · ' : '' %><%= formatarData(p.criado_em) %></span>
-            </div>
-          </div>
-          <p class="post-texto"><%= p.texto %></p>
-          <div class="post-acoes">
-            <% if (p.usuario_id === usuario.id) { %>
-              <form method="post" action="/post/<%= p.id %>/remover" class="inline" onsubmit="return confirm('Remover esta publicação?')"><button class="link mini">Remover</button></form>
-            <% } else { %>
-              <details class="denuncia">
-                <summary class="link mini">Denunciar</summary>
-                <form method="post" action="/post/<%= p.id %>/denunciar" class="inline-form">
-                  <input type="text" name="motivo" maxlength="300" placeholder="Motivo (opcional)">
-                  <button class="btn btn-pequeno btn-perigo">Enviar denúncia</button>
-                </form>
-              </details>
-            <% } %>
-          </div>
-        </li>
-      <% } %>
+      <% for (const p of posts) { %><%- include('../partials/post', { p, voltar: caminho, compacto: false }) %><% } %>
     </ul>
   <% } %>
 </section>
@@ -61,12 +51,19 @@
     <p><a href="/negocios">Meus pontos e negócios</a> · <a href="/ranking">Ranking</a></p>
   </div>
   <div class="caixa">
-    <h3>A rede hoje</h3>
-    <p><strong><%= stats.verificados %></strong> membros verificados<br><strong><%= stats.empresas %></strong> empresas<br><strong><%= stats.cidades %></strong> cidades</p>
+    <h3>Atalhos</h3>
+    <p>
+      <a href="/vagas/nova">+ Publicar vaga</a><br>
+      <a href="/curriculo">📄 Meu currículo</a><br>
+      <a href="/talentos">🧑‍💼 Talentos (quem procura trabalho)</a><br>
+      <a href="/diretorio">🏪 Diretório</a><br>
+      <a href="/convites">🎟️ Meus convites</a><br>
+      <a href="/corrente">💛 <%= config.nome_campanha %></a>
+    </p>
   </div>
   <div class="caixa">
-    <h3>Atalhos</h3>
-    <p><a href="/diretorio">Diretório</a><br><a href="/vagas">Vagas</a><br><a href="/convites">Meus convites</a><br><a href="/corrente"><%= config.nome_campanha %></a></p>
+    <h3>A rede hoje</h3>
+    <p><strong><%= stats.verificados %></strong> membros com selo<br><strong><%= stats.empresas %></strong> empresas<br><strong><%= stats.cidades %></strong> cidades</p>
   </div>
 </aside>
 </div>

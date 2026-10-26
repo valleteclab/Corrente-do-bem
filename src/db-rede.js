@@ -9,7 +9,8 @@ const crypto = require('node:crypto');
 
 const TIPOS_USUARIO = ['pessoa', 'empresa'];
 const STATUS_VERIFICACAO = ['pendente', 'em_analise', 'verificado', 'rejeitado'];
-const PAPEIS = ['membro', 'moderador'];
+/** membro: comum · verificador: só aprova/recusa pedidos de selo · moderador: painel inteiro */
+const PAPEIS = ['membro', 'verificador', 'moderador'];
 const TIPOS_VAGA = ['CLT', 'PJ', 'Freelancer', 'Estágio', 'Temporário', 'Outro'];
 const CONVITES_INICIAIS = 5;
 
@@ -129,6 +130,24 @@ CREATE TABLE IF NOT EXISTS avaliacoes (
   UNIQUE (empresa_id, autor_id)
 );
 
+CREATE TABLE IF NOT EXISTS curtidas (
+  post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (post_id, usuario_id)
+);
+
+CREATE TABLE IF NOT EXISTS comentarios (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  texto TEXT NOT NULL,
+  removido INTEGER NOT NULL DEFAULT 0,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_comentarios_post ON comentarios(post_id);
+
 CREATE TABLE IF NOT EXISTS pontos (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -179,9 +198,18 @@ function gerarCodigoConvite() {
 }
 
 function migrarRede(db) {
-  const colunas = new Set(db.prepare('PRAGMA table_info(verificacoes)').all().map((c) => c.name));
-  if (!colunas.has('outras_redes')) db.exec("ALTER TABLE verificacoes ADD COLUMN outras_redes TEXT NOT NULL DEFAULT ''");
-  if (!colunas.has('fotos')) db.exec("ALTER TABLE verificacoes ADD COLUMN fotos TEXT NOT NULL DEFAULT '[]'");
+  const colunasDe = (tabela) => new Set(db.prepare(`PRAGMA table_info(${tabela})`).all().map((c) => c.name));
+  const v = colunasDe('verificacoes');
+  if (!v.has('outras_redes')) db.exec("ALTER TABLE verificacoes ADD COLUMN outras_redes TEXT NOT NULL DEFAULT ''");
+  if (!v.has('fotos')) db.exec("ALTER TABLE verificacoes ADD COLUMN fotos TEXT NOT NULL DEFAULT '[]'");
+  if (!v.has('decidido_por')) db.exec('ALTER TABLE verificacoes ADD COLUMN decidido_por INTEGER');
+  const p = colunasDe('posts');
+  if (!p.has('midias')) db.exec("ALTER TABLE posts ADD COLUMN midias TEXT NOT NULL DEFAULT '[]'");
+  const u = colunasDe('usuarios');
+  if (!u.has('procura_emprego')) db.exec('ALTER TABLE usuarios ADD COLUMN procura_emprego INTEGER NOT NULL DEFAULT 0');
+  if (!u.has('profissao')) db.exec("ALTER TABLE usuarios ADD COLUMN profissao TEXT NOT NULL DEFAULT ''");
+  if (!u.has('curriculo')) db.exec("ALTER TABLE usuarios ADD COLUMN curriculo TEXT NOT NULL DEFAULT ''");
+  if (!u.has('curriculo_arquivo')) db.exec("ALTER TABLE usuarios ADD COLUMN curriculo_arquivo TEXT NOT NULL DEFAULT ''");
 }
 
 function criarRepositorioRede(db) {
@@ -221,6 +249,22 @@ function criarRepositorioRede(db) {
     },
     atualizarFoto(id, caminho) {
       db.prepare('UPDATE usuarios SET foto = ?, atualizado_em = ? WHERE id = ?').run(caminho, agora(), id);
+    },
+    atualizarCurriculo(id, { procura_emprego, profissao, curriculo }) {
+      db.prepare('UPDATE usuarios SET procura_emprego = ?, profissao = ?, curriculo = ?, atualizado_em = ? WHERE id = ?')
+        .run(procura_emprego ? 1 : 0, profissao, curriculo, agora(), id);
+    },
+    atualizarCurriculoArquivo(id, arquivo) {
+      db.prepare('UPDATE usuarios SET curriculo_arquivo = ?, atualizado_em = ? WHERE id = ?').run(arquivo, agora(), id);
+    },
+    /** Pessoas com selo que estão procurando trabalho. */
+    talentos({ cidade, busca, limite = 200 } = {}) {
+      const where = ["u.status_verificacao = 'verificado'", 'u.banido = 0', "u.tipo = 'pessoa'", 'u.procura_emprego = 1'];
+      const params = [];
+      if (cidade) { where.push('LOWER(u.cidade) LIKE ?'); params.push(`%${cidade.toLowerCase()}%`); }
+      if (busca) { where.push('(LOWER(u.profissao) LIKE ? OR LOWER(u.curriculo) LIKE ? OR LOWER(u.nome) LIKE ?)'); const b = `%${busca.toLowerCase()}%`; params.push(b, b, b); }
+      params.push(limite);
+      return db.prepare(`SELECT ${COLUNAS_PUBLICAS}, u.profissao, u.curriculo, u.curriculo_arquivo FROM usuarios u WHERE ${where.join(' AND ')} ORDER BY u.atualizado_em DESC LIMIT ?`).all(...params).map(limpar);
     },
     mudarSenha(id, senha) {
       db.prepare('UPDATE usuarios SET senha_hash = ?, atualizado_em = ? WHERE id = ?').run(gerarHashSenha(senha), agora(), id);
@@ -265,7 +309,7 @@ function criarRepositorioRede(db) {
     },
     /** Perfil público: sem e-mail/senha; WhatsApp só para membros verificados (decidido na rota). */
     perfilPublico(id) {
-      const u = limpar(db.prepare(`SELECT ${COLUNAS_PUBLICAS}, u.whatsapp, u.convidado_por,
+      const u = limpar(db.prepare(`SELECT ${COLUNAS_PUBLICAS}, u.whatsapp, u.convidado_por, u.procura_emprego, u.profissao, u.curriculo, u.curriculo_arquivo,
           (SELECT ROUND(AVG(nota), 1) FROM avaliacoes a WHERE a.empresa_id = u.id) AS nota_media,
           (SELECT COUNT(*) FROM avaliacoes a WHERE a.empresa_id = u.id) AS total_avaliacoes
         FROM usuarios u WHERE u.id = ?`).get(id));
@@ -349,21 +393,26 @@ function criarRepositorioRede(db) {
       const where = status ? 'WHERE v.status = ?' : '';
       const params = status ? [status] : [];
       return db.prepare(`SELECT v.*, u.nome, u.email, u.tipo, u.cidade, u.estado, u.foto, u.convidado_por, u.bio,
-          (SELECT nome FROM usuarios c WHERE c.id = u.convidado_por) AS convidante_nome
+          (SELECT nome FROM usuarios c WHERE c.id = u.convidado_por) AS convidante_nome,
+          (SELECT nome FROM usuarios d WHERE d.id = v.decidido_por) AS decidido_por_nome
         FROM verificacoes v JOIN usuarios u ON u.id = v.usuario_id ${where} ORDER BY v.id ASC`).all(...params).map(comFotos);
+    },
+    /** Quantos selos cada verificador/moderador já decidiu. */
+    contarDecisoes(usuarioId) {
+      return Number(db.prepare('SELECT COUNT(*) n FROM verificacoes WHERE decidido_por = ?').get(usuarioId).n);
     },
     salvarAnaliseIa(id, { resumo, recomendacao }) {
       db.prepare('UPDATE verificacoes SET analise_ia = ?, recomendacao_ia = ? WHERE id = ?').run(resumo || '', recomendacao || '', id);
     },
     /** Decide e, ao aprovar/rejeitar, apaga os caminhos das fotos (quem chama remove os arquivos). */
-    decidir(id, aprovado, motivo = '') {
+    decidir(id, aprovado, motivo = '', decididoPor = null) {
       const v = verificacoes.buscar(id);
       if (!v) return null;
       const status = aprovado ? 'verificado' : 'rejeitado';
       db.exec('BEGIN');
       try {
-        db.prepare("UPDATE verificacoes SET status = ?, motivo_decisao = ?, decidido_em = ?, fotos = '[]' WHERE id = ?")
-          .run(status, motivo, agora(), id);
+        db.prepare("UPDATE verificacoes SET status = ?, motivo_decisao = ?, decidido_em = ?, decidido_por = ?, fotos = '[]' WHERE id = ?")
+          .run(status, motivo, agora(), decididoPor, id);
         db.prepare('UPDATE usuarios SET status_verificacao = ?, atualizado_em = ? WHERE id = ?').run(status, agora(), v.usuario_id);
         if (aprovado) {
           db.prepare('UPDATE usuarios SET convites_restantes = MAX(convites_restantes, ?) WHERE id = ?').run(CONVITES_INICIAIS, v.usuario_id);
@@ -452,26 +501,66 @@ function criarRepositorioRede(db) {
     },
   };
 
+  const comMidias = (p) => (p ? { ...p, midias: safeLista(p.midias) } : null);
+
   const posts = {
-    criar({ usuario_id, texto, cidade = '' }) {
-      const r = db.prepare('INSERT INTO posts (usuario_id, texto, cidade) VALUES (?, ?, ?)').run(usuario_id, texto, cidade);
+    /** midias: [{ tipo: 'imagem'|'video', arquivo }] */
+    criar({ usuario_id, texto = '', cidade = '', midias = [] }) {
+      const r = db.prepare('INSERT INTO posts (usuario_id, texto, cidade, midias) VALUES (?, ?, ?, ?)').run(usuario_id, texto, cidade, JSON.stringify(midias));
       return Number(r.lastInsertRowid);
     },
-    listar({ cidade, limite = 50 } = {}) {
+    /** Lista para o feed. `usuarioId` marca os posts que a pessoa curtiu. `apenasVideos` = reels. */
+    listar({ cidade, autorId, apenasVideos = false, usuarioId = null, limite = 50 } = {}) {
       const where = ['p.removido = 0', 'u.banido = 0'];
-      const params = [];
+      const params = [usuarioId];
       if (cidade) { where.push('LOWER(p.cidade) LIKE ?'); params.push(`%${cidade.toLowerCase()}%`); }
+      if (autorId) { where.push('p.usuario_id = ?'); params.push(autorId); }
+      if (apenasVideos) where.push("p.midias LIKE '%\"video\"%'");
       params.push(limite);
-      return db.prepare(`SELECT p.*, u.nome, u.foto, u.tipo, u.status_verificacao,
-          (SELECT COUNT(*) FROM denuncias d WHERE d.post_id = p.id AND d.resolvida = 0) AS denuncias
+      const lista = db.prepare(`SELECT p.*, u.nome, u.foto, u.tipo, u.status_verificacao,
+          (SELECT COUNT(*) FROM curtidas c WHERE c.post_id = p.id) AS curtidas,
+          (SELECT COUNT(*) FROM comentarios c WHERE c.post_id = p.id AND c.removido = 0) AS total_comentarios,
+          EXISTS(SELECT 1 FROM curtidas c WHERE c.post_id = p.id AND c.usuario_id = ?) AS curti
         FROM posts p JOIN usuarios u ON u.id = p.usuario_id
-        WHERE ${where.join(' AND ')} ORDER BY p.id DESC LIMIT ?`).all(...params).map(limpar);
+        WHERE ${where.join(' AND ')} ORDER BY p.id DESC LIMIT ?`).all(...params).map(comMidias);
+      const ultimos = db.prepare(`SELECT c.*, u.nome, u.foto, u.tipo FROM comentarios c JOIN usuarios u ON u.id = c.usuario_id
+        WHERE c.post_id = ? AND c.removido = 0 AND u.banido = 0 ORDER BY c.id DESC LIMIT 3`);
+      for (const p of lista) p.comentarios = ultimos.all(p.id).map(limpar).reverse();
+      return lista;
     },
     buscar(id) {
-      return limpar(db.prepare('SELECT * FROM posts WHERE id = ?').get(id));
+      return comMidias(db.prepare('SELECT * FROM posts WHERE id = ?').get(id));
+    },
+    buscarCompleto(id, usuarioId = null) {
+      const p = comMidias(db.prepare(`SELECT p.*, u.nome, u.foto, u.tipo, u.status_verificacao,
+          (SELECT COUNT(*) FROM curtidas c WHERE c.post_id = p.id) AS curtidas,
+          EXISTS(SELECT 1 FROM curtidas c WHERE c.post_id = p.id AND c.usuario_id = ?) AS curti
+        FROM posts p JOIN usuarios u ON u.id = p.usuario_id WHERE p.id = ? AND p.removido = 0 AND u.banido = 0`).get(usuarioId, id));
+      if (!p) return null;
+      p.comentarios = db.prepare(`SELECT c.*, u.nome, u.foto, u.tipo FROM comentarios c JOIN usuarios u ON u.id = c.usuario_id
+        WHERE c.post_id = ? AND c.removido = 0 AND u.banido = 0 ORDER BY c.id ASC`).all(id).map(limpar);
+      p.total_comentarios = p.comentarios.length;
+      return p;
     },
     remover(id) {
       db.prepare('UPDATE posts SET removido = 1 WHERE id = ?').run(id);
+    },
+    /** Alterna curtida. Retorna true se passou a curtir. */
+    curtir(postId, usuarioId) {
+      const r = db.prepare('DELETE FROM curtidas WHERE post_id = ? AND usuario_id = ?').run(postId, usuarioId);
+      if (r.changes > 0) return false;
+      db.prepare('INSERT INTO curtidas (post_id, usuario_id) VALUES (?, ?)').run(postId, usuarioId);
+      return true;
+    },
+    comentar({ post_id, usuario_id, texto }) {
+      const r = db.prepare('INSERT INTO comentarios (post_id, usuario_id, texto) VALUES (?, ?, ?)').run(post_id, usuario_id, texto);
+      return Number(r.lastInsertRowid);
+    },
+    buscarComentario(id) {
+      return limpar(db.prepare('SELECT * FROM comentarios WHERE id = ?').get(id));
+    },
+    removerComentario(id) {
+      db.prepare('UPDATE comentarios SET removido = 1 WHERE id = ?').run(id);
     },
   };
 

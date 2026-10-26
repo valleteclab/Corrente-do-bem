@@ -38,20 +38,68 @@ module.exports = function criarRotasRede(db, { auth, uploads, ia, gamificacao })
     const cidade = texto(req.query.cidade, 120);
     res.render('rede/feed', {
       titulo: 'Feed',
-      posts: db.posts.listar({ cidade }),
+      posts: db.posts.listar({ cidade, usuarioId: req.usuario.id }),
       cidadeFiltro: cidade,
+      modo: 'feed',
       stats: db.usuarios.contar(),
       meu: gamificacao.resumo(req.usuario.id),
       pendentes: req.usuario.tipo === 'empresa' ? db.negocios.daEmpresa(req.usuario.id, 'pendente').length : 0,
     });
   });
 
+  // Reels: só publicações com vídeo.
+  router.get('/reels', auth.exigirLogin, (req, res) => {
+    res.render('rede/reels', { titulo: 'Reels', posts: db.posts.listar({ apenasVideos: true, usuarioId: req.usuario.id, limite: 30 }) });
+  });
+
+  // Uma publicação (para compartilhar o link).
+  router.get('/p/:id', (req, res, next) => {
+    const id = idDe(req.params.id);
+    const p = id ? db.posts.buscarCompleto(id, req.usuario ? req.usuario.id : null) : null;
+    if (!p) return next();
+    res.render('rede/post', { titulo: `${p.nome} no feed`, post: p });
+  });
+
   router.post('/post', auth.exigirVerificado, (req, res) => {
-    const txt = texto(req.body.texto, 2000);
-    if (txt.length < 2) { res.locals.setFlash('erro', 'Escreva alguma coisa.'); return res.redirect('/feed'); }
-    const id = db.posts.criar({ usuario_id: req.usuario.id, texto: txt, cidade: req.usuario.cidade });
-    gamificacao.premiar(req.usuario.id, 'post', String(id));
-    res.redirect('/feed');
+    uploads.midias(req, res, (err) => {
+      const msg = uploads.mensagemErro(err);
+      const arquivos = req.files || [];
+      const falhar = (mensagem) => { for (const f of arquivos) uploads.apagarMidia(f.filename); res.locals.setFlash('erro', mensagem); res.redirect('/feed'); };
+      if (err && !msg) return falhar('Não foi possível receber os arquivos.');
+      if (msg) return falhar(msg);
+      const txt = texto(req.body.texto, 2000);
+      const videos = arquivos.filter((f) => uploads.ehVideo(f.mimetype));
+      if (videos.length > 1 || (videos.length === 1 && arquivos.length > 1)) return falhar('Um vídeo por publicação, sem misturar com fotos.');
+      if (txt.length < 1 && arquivos.length === 0) return falhar('Escreva algo ou envie uma foto ou vídeo.');
+      const midias = arquivos.map((f) => ({ tipo: uploads.ehVideo(f.mimetype) ? 'video' : 'imagem', arquivo: f.filename }));
+      const id = db.posts.criar({ usuario_id: req.usuario.id, texto: txt, cidade: req.usuario.cidade, midias });
+      gamificacao.premiar(req.usuario.id, 'post', String(id));
+      res.redirect(videos.length ? '/reels' : '/feed');
+    });
+  });
+
+  router.post('/post/:id/curtir', auth.exigirVerificado, (req, res) => {
+    const id = idDe(req.params.id);
+    if (id && db.posts.buscar(id)) db.posts.curtir(id, req.usuario.id);
+    res.redirect(req.body.voltar || '/feed');
+  });
+
+  router.post('/post/:id/comentar', auth.exigirVerificado, (req, res) => {
+    const id = idDe(req.params.id);
+    const txt = texto(req.body.texto, 600);
+    if (id && txt && db.posts.buscar(id)) {
+      const cid = db.posts.comentar({ post_id: id, usuario_id: req.usuario.id, texto: txt });
+      gamificacao.premiar(req.usuario.id, 'comentou', String(cid));
+    }
+    res.redirect(req.body.voltar || `/p/${id}`);
+  });
+
+  router.post('/comentario/:id/remover', auth.exigirLogin, (req, res) => {
+    const id = idDe(req.params.id);
+    const c = id ? db.posts.buscarComentario(id) : null;
+    const p = c ? db.posts.buscar(c.post_id) : null;
+    if (c && (c.usuario_id === req.usuario.id || (p && p.usuario_id === req.usuario.id))) db.posts.removerComentario(id);
+    res.redirect(req.body.voltar || '/feed');
   });
 
   router.post('/post/:id/denunciar', auth.exigirLogin, (req, res) => {
@@ -66,8 +114,11 @@ module.exports = function criarRotasRede(db, { auth, uploads, ia, gamificacao })
   router.post('/post/:id/remover', auth.exigirLogin, (req, res) => {
     const id = idDe(req.params.id);
     const p = id ? db.posts.buscar(id) : null;
-    if (p && p.usuario_id === req.usuario.id) db.posts.remover(id);
-    res.redirect('/feed');
+    if (p && p.usuario_id === req.usuario.id) {
+      db.posts.remover(id);
+      for (const m of p.midias) uploads.apagarMidia(m.arquivo);
+    }
+    res.redirect(req.body.voltar || '/feed');
   });
 
   // ----- diretório -----
@@ -99,7 +150,7 @@ module.exports = function criarRotasRede(db, { auth, uploads, ia, gamificacao })
       jogo: gamificacao.resumo(perfil.id),
       avaliacoes: perfil.tipo === 'empresa' ? db.avaliacoes.daEmpresa(perfil.id) : [],
       vagas: perfil.tipo === 'empresa' ? db.vagas.listar({ empresa_id: perfil.id }) : [],
-      posts: db.posts.listar({ limite: 10 }).filter((p) => p.usuario_id === perfil.id),
+      posts: db.posts.listar({ autorId: perfil.id, usuarioId: req.usuario ? req.usuario.id : null, limite: 12 }),
       negocioPendente: req.usuario && perfil.tipo === 'empresa' && !souEu ? db.negocios.pendentesHoje(req.usuario.id, perfil.id) > 0 : false,
     });
   });
@@ -253,6 +304,62 @@ module.exports = function criarRotasRede(db, { auth, uploads, ia, gamificacao })
     });
   });
 
+  // ----- currículo e talentos -----
+  router.get('/curriculo', auth.exigirLogin, (req, res) => {
+    res.render('rede/curriculo', { titulo: 'Meu currículo', valores: req.usuario, erros: [] });
+  });
+
+  router.post('/curriculo', auth.exigirLogin, (req, res) => {
+    const valores = {
+      procura_emprego: req.body.procura_emprego === '1',
+      profissao: texto(req.body.profissao, 120),
+      curriculo: texto(req.body.curriculo, 4000),
+    };
+    const erros = [];
+    if (valores.procura_emprego && !valores.profissao) erros.push('Diga sua profissão ou área para aparecer em Talentos.');
+    if (erros.length) return res.status(422).render('rede/curriculo', { titulo: 'Meu currículo', valores: { ...req.usuario, ...valores }, erros });
+    db.usuarios.atualizarCurriculo(req.usuario.id, valores);
+    if (valores.profissao && valores.curriculo) gamificacao.premiar(req.usuario.id, 'curriculo', 'curriculo');
+    res.locals.setFlash('ok', valores.procura_emprego ? 'Currículo salvo. Você já aparece em Talentos para as empresas da rede.' : 'Currículo salvo.');
+    res.redirect('/curriculo');
+  });
+
+  router.post('/curriculo/arquivo', auth.exigirLogin, (req, res) => {
+    uploads.curriculo(req, res, (err) => {
+      const msg = uploads.mensagemErro(err);
+      if (err && !msg) return res.status(500).render('erro', { titulo: 'Deu algo errado', mensagem: 'Não foi possível salvar o PDF.' });
+      if (msg) { res.locals.setFlash('erro', msg); return res.redirect('/curriculo'); }
+      if (!req.file) { res.locals.setFlash('erro', 'Escolha um PDF.'); return res.redirect('/curriculo'); }
+      const antigo = req.usuario.curriculo_arquivo;
+      db.usuarios.atualizarCurriculoArquivo(req.usuario.id, req.file.filename);
+      if (antigo) uploads.apagarCurriculo(antigo);
+      res.locals.setFlash('ok', 'PDF do currículo enviado.');
+      res.redirect('/curriculo');
+    });
+  });
+
+  router.post('/curriculo/arquivo/remover', auth.exigirLogin, (req, res) => {
+    if (req.usuario.curriculo_arquivo) {
+      uploads.apagarCurriculo(req.usuario.curriculo_arquivo);
+      db.usuarios.atualizarCurriculoArquivo(req.usuario.id, '');
+    }
+    res.redirect('/curriculo');
+  });
+
+  // PDF do currículo: só membros com selo veem.
+  router.get('/u/:id/curriculo', auth.exigirVerificado, (req, res, next) => {
+    const id = idDe(req.params.id);
+    const u = id ? db.usuarios.buscar(id) : null;
+    if (!u || !u.curriculo_arquivo || u.banido) return next();
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.sendFile(uploads.caminhoCurriculo(u.curriculo_arquivo), { headers: { 'Content-Disposition': `inline; filename="curriculo-${id}.pdf"` } }, (err) => { if (err) next(); });
+  });
+
+  router.get('/talentos', (req, res) => {
+    const filtro = { cidade: texto(req.query.cidade, 120), busca: texto(req.query.q, 120) };
+    res.render('rede/talentos', { titulo: 'Talentos', talentos: db.usuarios.talentos(filtro), filtro });
+  });
+
   // ----- convites -----
   router.get('/convites', auth.exigirLogin, (req, res) => {
     res.render('rede/convites', { titulo: 'Meus convites', convites: db.convites.doUsuario(req.usuario.id) });
@@ -274,11 +381,12 @@ module.exports = function criarRotasRede(db, { auth, uploads, ia, gamificacao })
     res.render('rede/vagas', { titulo: 'Vagas', vagas: db.vagas.listar({ cidade }), cidadeFiltro: cidade });
   });
 
-  router.get('/vagas/nova', auth.exigirEmpresa, (req, res) => {
+  // Qualquer membro com selo pode publicar vaga (empresa ou pessoa contratando).
+  router.get('/vagas/nova', auth.exigirVerificado, (req, res) => {
     res.render('rede/vaga-nova', { titulo: 'Publicar vaga', valores: { cidade: req.usuario.cidade, tipo: 'CLT' }, erros: [], tiposVaga: TIPOS_VAGA });
   });
 
-  router.post('/vagas/nova', auth.exigirEmpresa, (req, res) => {
+  router.post('/vagas/nova', auth.exigirVerificado, (req, res) => {
     const valores = { titulo: texto(req.body.titulo, 120), descricao: texto(req.body.descricao, 3000), cidade: texto(req.body.cidade, 120), tipo: texto(req.body.tipo, 20) };
     const erros = [];
     if (!valores.titulo) erros.push('Dê um título à vaga.');
@@ -315,7 +423,7 @@ module.exports = function criarRotasRede(db, { auth, uploads, ia, gamificacao })
     res.redirect(`/vagas/${id}`);
   });
 
-  router.post('/vagas/:id/fechar', auth.exigirEmpresa, (req, res) => {
+  router.post('/vagas/:id/fechar', auth.exigirVerificado, (req, res) => {
     const id = idDe(req.params.id);
     const vaga = id ? db.vagas.buscar(id) : null;
     if (vaga && vaga.empresa_id === req.usuario.id) db.vagas.fechar(id, req.body.aberta === '1');

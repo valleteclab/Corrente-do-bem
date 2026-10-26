@@ -3,7 +3,7 @@
 const crypto = require('node:crypto');
 const express = require('express');
 const { CATEGORIAS, STATUS_OFERTA, STATUS_PEDIDO } = require('../db');
-const { STATUS_VERIFICACAO } = require('../db-rede');
+const { STATUS_VERIFICACAO, PAPEIS } = require('../db-rede');
 
 function texto(valor, max = 500) {
   return String(valor ?? '').replace(/\r/g, '').trim().slice(0, max);
@@ -48,9 +48,14 @@ module.exports = function criarRotasAdmin(db, { senha, ia, uploads, gamificacao 
   function ehModerador(req) {
     return req.signedCookies.admin === 'ok' || (req.usuario && req.usuario.papel === 'moderador');
   }
+  /** Verificador: membro que só cuida da fila do selo. */
+  function ehVerificador(req) {
+    return req.usuario && req.usuario.papel === 'verificador';
+  }
 
   router.get('/login', (req, res) => {
     if (ehModerador(req)) return res.redirect('/admin');
+    if (ehVerificador(req)) return res.redirect('/admin/verificacoes');
     res.render('admin/login', { titulo: 'Entrar no painel', painelAtivo, erro: null });
   });
 
@@ -72,12 +77,26 @@ module.exports = function criarRotasAdmin(db, { senha, ia, uploads, gamificacao 
     res.redirect('/');
   });
 
-  // Tudo abaixo exige moderação.
+  // Tudo abaixo exige moderação. Verificadores só entram na fila do selo.
   router.use((req, res, next) => {
-    if (!ehModerador(req)) return res.redirect('/admin/login');
-    res.locals.admin = true;
-    next();
+    if (ehModerador(req)) {
+      res.locals.admin = true;
+      res.locals.papelPainel = 'moderador';
+      return next();
+    }
+    if (ehVerificador(req)) {
+      res.locals.admin = true;
+      res.locals.papelPainel = 'verificador';
+      if (req.path === '/' || req.path === '') return res.redirect('/admin/verificacoes');
+      if (req.path.startsWith('/verificacoes')) return next();
+      res.locals.setFlash('erro', 'Como verificador, você só tem acesso à fila do selo.');
+      return res.redirect('/admin/verificacoes');
+    }
+    res.redirect('/admin/login');
   });
+
+  /** Quem está decidindo: id do membro, ou null quando é a senha de admin. */
+  const decisor = (req) => (req.usuario ? req.usuario.id : null);
 
   router.get('/', (req, res) => {
     res.render('admin/dashboard', {
@@ -116,7 +135,7 @@ module.exports = function criarRotasAdmin(db, { senha, ia, uploads, gamificacao 
   router.post('/verificacoes/:id/decidir', (req, res) => {
     const id = idDe(req.params.id);
     const aprovado = req.body.decisao === 'aprovar';
-    const r = id ? db.verificacoes.decidir(id, aprovado, texto(req.body.motivo, 500)) : null;
+    const r = id ? db.verificacoes.decidir(id, aprovado, texto(req.body.motivo, 500), decisor(req)) : null;
     if (r) {
       for (const f of r.fotos) uploads.apagarPrivado(f);
       if (aprovado) gamificacao.premiar(r.usuario_id, 'selo', 'verificacao');
@@ -144,7 +163,8 @@ module.exports = function criarRotasAdmin(db, { senha, ia, uploads, gamificacao 
       tipo: ['pessoa', 'empresa'].includes(req.query.tipo) ? req.query.tipo : '',
       busca: texto(req.query.q, 120),
     };
-    res.render('admin/usuarios', { titulo: 'Membros', usuarios: db.usuarios.listar(filtro), filtro, statusLista: STATUS_VERIFICACAO });
+    const usuarios = db.usuarios.listar(filtro).map((u) => ({ ...u, decisoes: u.papel === 'membro' ? 0 : db.verificacoes.contarDecisoes(u.id) }));
+    res.render('admin/usuarios', { titulo: 'Membros', usuarios, filtro, statusLista: STATUS_VERIFICACAO, papeis: PAPEIS });
   });
 
   router.post('/usuarios/:id/banir', (req, res) => {
@@ -165,7 +185,10 @@ module.exports = function criarRotasAdmin(db, { senha, ia, uploads, gamificacao 
 
   router.post('/usuarios/:id/papel', (req, res) => {
     const id = idDe(req.params.id);
-    if (id && ['membro', 'moderador'].includes(req.body.papel)) { db.usuarios.mudarPapel(id, req.body.papel); res.locals.setFlash('ok', 'Papel atualizado.'); }
+    if (id && PAPEIS.includes(req.body.papel)) {
+      db.usuarios.mudarPapel(id, req.body.papel);
+      res.locals.setFlash('ok', { membro: 'Papel removido: agora é membro comum.', verificador: 'Agora é verificador: pode aprovar e recusar pedidos de selo.', moderador: 'Agora é moderador: acesso ao painel inteiro.' }[req.body.papel]);
+    }
     res.redirect(req.body.voltar || '/admin/usuarios');
   });
 

@@ -87,13 +87,24 @@
 <% } %>
 <% } %>
 
+<% if (perfil.tipo === 'pessoa' && (perfil.procura_emprego || perfil.profissao)) { %>
+<section class="destaque">
+  <h2>💼 <%= perfil.profissao || 'Profissional' %> <% if (perfil.procura_emprego) { %><span class="badge badge-verificado">procurando trabalho</span><% } %></h2>
+  <% if (mostrarContato) { %>
+    <% if (perfil.curriculo) { %><p class="texto-bio"><%= perfil.curriculo %></p><% } %>
+    <% if (perfil.curriculo_arquivo) { %><p><a href="/u/<%= perfil.id %>/curriculo" target="_blank" class="btn btn-pequeno btn-secundario">📎 Currículo em PDF</a></p><% } %>
+  <% } else { %>
+    <p class="mini muted">Currículo completo visível para membros com selo.</p>
+  <% } %>
+  <% if (souEu) { %><p><a href="/curriculo">Editar currículo</a></p><% } %>
+</section>
+<% } %>
+
 <% if (posts.length) { %>
 <section>
   <h2>Publicações</h2>
   <ul class="posts">
-    <% for (const p of posts) { %>
-      <li class="post"><p class="post-texto"><%= p.texto %></p><span class="muted mini"><%= formatarData(p.criado_em) %></span></li>
-    <% } %>
+    <% for (const p of posts) { %><%- include('../partials/post', { p, voltar: '/u/' + perfil.id, compacto: true }) %><% } %>
   </ul>
 </section>
 <% } %>

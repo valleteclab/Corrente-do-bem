@@ -25,13 +25,18 @@ O nome, o slogan e os textos são configuráveis no painel. As cores seguem a ba
   Avaliações (1 a 5 estrelas) só por membros verificados. WhatsApp visível só para membros verificados.
 - **Vagas**: empresas verificadas publicam; membros verificados se candidatam com um clique. A empresa vê o perfil
   e o contato de quem se candidatou. Vagas são abertas a todos os membros.
-- **Feed** por cidade: publicações de texto, denúncia de post ou perfil, remoção do próprio post.
+- **Feed** estilo Instagram: publicações com texto, até 4 fotos ou 1 vídeo (**Reels**), curtidas, comentários, página
+  por publicação para compartilhar, filtro por cidade, denúncias. Links do Instagram e do YouTube no texto viram
+  embeds (o conteúdo continua hospedado lá; não baixamos fotos de terceiros).
+- **Currículo e Talentos**: pessoas preenchem profissão, resumo e PDF opcional, marcam "procurando trabalho" e aparecem
+  na página Talentos para as empresas. PDF visível só para membros com selo. Qualquer membro com selo publica vagas.
 - **Corrente do Bem** (`/corrente`): o módulo de doações original. Lista do que a beneficiária precisa, ofertas,
   pedidos de outras pessoas e repasse das doações que sobram, com sugestões por IA.
 
 **Moderação (`/admin`)**
 
-- Entra com a senha `ADMIN_PASSWORD` ou com uma conta de membro com papel "moderador".
+- Entra com a senha `ADMIN_PASSWORD` ou com uma conta de membro com papel **moderador** (painel inteiro) ou
+  **verificador** (só a fila do selo: aprovar/recusar). Papéis são dados em Membros. Cada decisão registra quem decidiu.
 - **Fila de verificação**: vê as imagens, a recomendação da IA, aprova ou recusa com motivo.
 - **Membros**: busca, verificar manualmente, tirar selo, dar convites, tornar moderador, suspender.
 - **Denúncias**: remover publicação, suspender conta, resolver.

@@ -1,6 +1,9 @@
 <%- include('../partials/head') %>
 
 <h1>Fila do selo <%= config.nome_selo %></h1>
+<% if (papelPainel === 'verificador') { %>
+  <div class="aviso aviso-info aviso-fino">Você é <strong>verificador</strong>: confira as redes e fotos e dê o selo só para quem é real e faz parte da comunidade. Em dúvida, recuse com um motivo claro ou deixe para a moderação.</div>
+<% } %>
 
 <nav class="abas">
   <a href="/admin/verificacoes?status=em_analise" class="<%= statusFiltro === 'em_analise' ? 'ativo' : '' %>">Em análise</a>
@@ -39,7 +42,7 @@
             <% }) %>
           </div>
         <% } else if (v.status !== 'em_analise') { %>
-          <p class="mini muted">Fotos apagadas após a decisão<%= v.motivo_decisao ? ' · motivo: ' + v.motivo_decisao : '' %><%= v.decidido_em ? ' · ' + formatarData(v.decidido_em) : '' %>.</p>
+          <p class="mini muted">Decidido por <%= v.decidido_por_nome || 'administração' %><%= v.decidido_em ? ' em ' + formatarData(v.decidido_em) : '' %><%= v.motivo_decisao ? ' · motivo: ' + v.motivo_decisao : '' %>. Fotos apagadas.</p>
         <% } %>
         <% if (v.analise_ia) { %>
           <div class="ia"><p class="ia-resumo">🤖 <strong>IA recomenda: <%= v.recomendacao_ia %>.</strong> <%= v.analise_ia %></p></div>

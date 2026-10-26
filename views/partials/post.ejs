@@ -1,0 +1,78 @@
+<%# Cartão de publicação. Espera: p (post), voltar (url), compacto (bool opcional) %>
+<li class="post <%= p.midias.some((m) => m.tipo === 'video') ? 'post-video' : '' %>">
+  <div class="post-cab">
+    <%- include('avatar', { pessoa: p, tamanho: 'avatar-mini' }) %>
+    <div>
+      <a href="/u/<%= p.usuario_id %>"><strong><%= p.nome %></strong></a>
+      <% if (p.status_verificacao === 'verificado') { %><span class="selo" title="Selo <%= config.nome_selo %>">✓</span><% } %>
+      <span class="muted mini"><%= p.cidade ? p.cidade + ' · ' : '' %><%= formatarData(p.criado_em) %></span>
+    </div>
+  </div>
+
+  <% if (p.midias.length) { %>
+    <% const video = p.midias.find((m) => m.tipo === 'video'); %>
+    <% if (video) { %>
+      <div class="post-midia">
+        <video controls playsinline preload="metadata" src="<%= urlMidia(video.arquivo) %>"></video>
+      </div>
+    <% } else { %>
+      <div class="post-grade grade-<%= Math.min(p.midias.length, 4) %>">
+        <% for (const m of p.midias) { %><a href="<%= urlMidia(m.arquivo) %>" target="_blank"><img src="<%= urlMidia(m.arquivo) %>" alt="" loading="lazy"></a><% } %>
+      </div>
+    <% } %>
+  <% } %>
+
+  <% if (p.texto) { %><p class="post-texto"><%- linkificar(p.texto) %></p><% } %>
+  <% for (const e of embedsDe(p.texto)) { %>
+    <div class="embed embed-<%= e.tipo %>">
+      <% if (e.tipo === 'instagram') { %>
+        <iframe src="<%= e.url %>" loading="lazy" allowtransparency="true" frameborder="0" scrolling="no" title="Instagram"></iframe>
+      <% } else { %>
+        <iframe src="<%= e.url %>" loading="lazy" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen title="YouTube"></iframe>
+      <% } %>
+    </div>
+  <% } %>
+
+  <div class="post-acoes">
+    <% if (usuario && usuario.status_verificacao === 'verificado') { %>
+      <form method="post" action="/post/<%= p.id %>/curtir" class="inline">
+        <input type="hidden" name="voltar" value="<%= voltar %>">
+        <button class="curtir <%= p.curti ? 'curtido' : '' %>" title="Curtir"><%= p.curti ? '❤️' : '🤍' %> <%= p.curtidas %></button>
+      </form>
+    <% } else { %>
+      <span class="curtir">🤍 <%= p.curtidas %></span>
+    <% } %>
+    <a href="/p/<%= p.id %>" class="mini">💬 <%= p.total_comentarios %> comentário<%= p.total_comentarios === 1 ? '' : 's' %></a>
+    <% if (usuario && p.usuario_id === usuario.id) { %>
+      <form method="post" action="/post/<%= p.id %>/remover" class="inline" onsubmit="return confirm('Remover esta publicação?')"><input type="hidden" name="voltar" value="<%= voltar %>"><button class="link mini">Remover</button></form>
+    <% } else if (usuario) { %>
+      <details class="denuncia">
+        <summary class="link mini">Denunciar</summary>
+        <form method="post" action="/post/<%= p.id %>/denunciar" class="inline-form">
+          <input type="text" name="motivo" maxlength="300" placeholder="Motivo (opcional)">
+          <button class="btn btn-pequeno btn-perigo">Enviar denúncia</button>
+        </form>
+      </details>
+    <% } %>
+  </div>
+
+  <% if (!compacto && p.comentarios && p.comentarios.length) { %>
+    <ul class="comentarios">
+      <% for (const c of p.comentarios) { %>
+        <li><a href="/u/<%= c.usuario_id %>"><strong><%= c.nome %></strong></a> <%= c.texto %>
+          <% if (usuario && (c.usuario_id === usuario.id || p.usuario_id === usuario.id)) { %>
+            <form method="post" action="/comentario/<%= c.id %>/remover" class="inline"><input type="hidden" name="voltar" value="<%= voltar %>"><button class="link mini" title="Remover">×</button></form>
+          <% } %>
+        </li>
+      <% } %>
+      <% if (p.total_comentarios > p.comentarios.length) { %><li class="mini"><a href="/p/<%= p.id %>">Ver todos os <%= p.total_comentarios %> comentários</a></li><% } %>
+    </ul>
+  <% } %>
+  <% if (!compacto && usuario && usuario.status_verificacao === 'verificado') { %>
+    <form method="post" action="/post/<%= p.id %>/comentar" class="comentar">
+      <input type="hidden" name="voltar" value="<%= voltar %>">
+      <input type="text" name="texto" maxlength="600" placeholder="Comente..." required>
+      <button class="btn btn-pequeno btn-secundario">Enviar</button>
+    </form>
+  <% } %>
+</li>

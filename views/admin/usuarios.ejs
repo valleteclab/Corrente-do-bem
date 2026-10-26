@@ -27,7 +27,7 @@
         <a href="/u/<%= u.id %>" target="_blank"><strong><%= u.nome %></strong></a>
         <span class="tag"><%= rotulos.tipoUsuario[u.tipo] %></span>
         <span class="badge badge-<%= u.status_verificacao %>"><%= rotulos.verificacao[u.status_verificacao] %></span>
-        <% if (u.papel === 'moderador') { %><span class="badge badge-ia">moderador</span><% } %>
+        <% if (u.papel !== 'membro') { %><span class="badge badge-ia"><%= u.papel %><%= u.decisoes ? ' · ' + u.decisoes + ' selo(s) decididos' : '' %></span><% } %>
         <% if (u.banido) { %><span class="badge badge-cancelada">suspensa</span><% } %>
         <span class="muted mini">#<%= u.id %> · <%= formatarData(u.criado_em) %></span>
       </div>
@@ -39,7 +39,15 @@
           <form method="post" action="/admin/usuarios/<%= u.id %>/status" class="inline"><input type="hidden" name="status" value="pendente"><input type="hidden" name="voltar" value="<%= caminho %>"><button class="btn btn-pequeno btn-secundario">Tirar selo</button></form>
         <% } %>
         <form method="post" action="/admin/usuarios/<%= u.id %>/convites" class="inline"><input type="hidden" name="quantidade" value="5"><input type="hidden" name="voltar" value="<%= caminho %>"><button class="btn btn-pequeno btn-secundario">+5 convites</button></form>
-        <form method="post" action="/admin/usuarios/<%= u.id %>/papel" class="inline"><input type="hidden" name="papel" value="<%= u.papel === 'moderador' ? 'membro' : 'moderador' %>"><input type="hidden" name="voltar" value="<%= caminho %>"><button class="btn btn-pequeno btn-secundario"><%= u.papel === 'moderador' ? 'Remover moderador' : 'Tornar moderador' %></button></form>
+        <form method="post" action="/admin/usuarios/<%= u.id %>/papel" class="inline papel-form">
+          <input type="hidden" name="voltar" value="<%= caminho %>">
+          <select name="papel">
+            <option value="membro" <%= u.papel === 'membro' ? 'selected' : '' %>>Membro comum</option>
+            <option value="verificador" <%= u.papel === 'verificador' ? 'selected' : '' %>>Verificador (só fila do selo)</option>
+            <option value="moderador" <%= u.papel === 'moderador' ? 'selected' : '' %>>Moderador (painel inteiro)</option>
+          </select>
+          <button class="btn btn-pequeno btn-secundario">Salvar papel</button>
+        </form>
         <form method="post" action="/admin/usuarios/<%= u.id %>/banir" class="inline" onsubmit="return confirm('<%= u.banido ? 'Reativar' : 'Suspender' %> esta conta?')"><input type="hidden" name="banido" value="<%= u.banido ? '0' : '1' %>"><input type="hidden" name="voltar" value="<%= caminho %>"><button class="btn btn-pequeno btn-perigo"><%= u.banido ? 'Reativar' : 'Suspender' %></button></form>
       </div>
     </li>

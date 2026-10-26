@@ -179,7 +179,7 @@ test('selo por fotos: até 3 fotos privadas, apagadas após a decisão', async (
   const quatro = Array.from({ length: 4 }, (_, i) => ({ nome: `f${i}.png`, dados: PNG, tipo: 'image/png' }));
   r = await postMultipart('/verificacao', { instagram: 'carla' }, quatro, carla);
   assert.equal(r.status, 422);
-  assert.match(await r.text(), /no máximo 3 fotos/);
+  assert.match(await r.text(), /arquivos demais/);
 });
 
 test('comércio gamificado: cliente registra negócio, empresa confirma, os dois pontuam e sobem no ranking', async () => {
@@ -326,4 +326,35 @@ test('nome do selo é configurável', async () => {
   const html = await (await get('/')).text();
   assert.match(html, /selo Verificado/);
   db.config.salvar({ nome_selo: 'Patriota' });
+});
+
+test('verificador só acessa a fila do selo e fica registrado como quem decidiu', async () => {
+  const brunoDb = db.usuarios.buscarPorEmail('bruno@teste.com');
+  db.usuarios.mudarPapel(brunoDb.id, 'verificador');
+  const bruno = await entrar('bruno@teste.com');
+  let r = await get('/admin', bruno);
+  assert.equal(r.headers.get('location'), '/admin/verificacoes');
+  assert.equal((await get('/admin/verificacoes', bruno)).status, 200);
+  r = await get('/admin/usuarios', bruno);
+  assert.equal(r.status, 302, 'verificador não entra em Membros');
+  r = await get('/admin/config', bruno);
+  assert.equal(r.status, 302, 'verificador não entra em Config');
+
+  // Alguém pede o selo; o verificador aprova.
+  const { cookie: eli } = await cadastrar({ nome: 'Eli Santos', email: 'eli@teste.com' });
+  await postMultipart('/verificacao', { instagram: '@eli.santos' }, [], eli);
+  const eliDb = db.usuarios.buscarPorEmail('eli@teste.com');
+  const v = db.verificacoes.ultimaDoUsuario(eliDb.id);
+  r = await post(`/admin/verificacoes/${v.id}/decidir`, { decisao: 'aprovar' }, bruno);
+  assert.equal(r.status, 302);
+  assert.equal(db.usuarios.buscar(eliDb.id).status_verificacao, 'verificado');
+  assert.equal(db.verificacoes.buscar(v.id).decidido_por, brunoDb.id);
+  const aprovados = await (await get('/admin/verificacoes?status=verificado', bruno)).text();
+  assert.match(aprovados, /Decidido por Bruno Lima/);
+
+  // No painel de Membros, o admin vê quantos selos ele decidiu.
+  const admin = await loginAdmin();
+  const membros = await (await get('/admin/usuarios?q=Bruno', admin)).text();
+  assert.match(membros, /verificador · 1 selo\(s\) decididos/);
+  db.usuarios.mudarPapel(brunoDb.id, 'moderador');
 });
