@@ -1,0 +1,77 @@
+<%- include('../partials/head') %>
+
+<h1>Meu perfil</h1>
+<p class="muted">Status: <span class="badge badge-<%= usuario.status_verificacao %>"><%= rotulos.verificacao[usuario.status_verificacao] %></span>
+  <% if (usuario.status_verificacao !== 'verificado') { %> · <a href="/verificacao">Verificar agora</a><% } %>
+  · <a href="/u/<%= usuario.id %>">Ver como os outros veem</a>
+</p>
+
+<% if (erros.length) { %>
+  <div class="aviso aviso-erro"><ul><% for (const e of erros) { %><li><%= e %></li><% } %></ul></div>
+<% } %>
+
+<div class="duas-colunas">
+<section class="coluna-principal">
+  <form method="post" action="/perfil" class="form">
+    <label>Nome
+      <input type="text" name="nome" required maxlength="120" value="<%= valores.nome || '' %>">
+    </label>
+    <% if (usuario.tipo === 'empresa') { %>
+    <label>Categoria
+      <select name="categoria">
+        <% for (const c of categoriasEmpresa) { %><option value="<%= c %>" <%= valores.categoria === c ? 'selected' : '' %>><%= c %></option><% } %>
+      </select>
+    </label>
+    <% } %>
+    <div class="linha-2">
+      <label>Cidade
+        <input type="text" name="cidade" required maxlength="120" value="<%= valores.cidade || '' %>">
+      </label>
+      <label>UF
+        <input type="text" name="estado" maxlength="2" value="<%= valores.estado || '' %>">
+      </label>
+    </div>
+    <label>Sobre <%= usuario.tipo === 'empresa' ? 'a empresa' : 'você' %>
+      <textarea name="bio" rows="4" maxlength="1000"><%= valores.bio || '' %></textarea>
+    </label>
+    <label>Instagram
+      <input type="text" name="instagram" maxlength="60" value="<%= valores.instagram || '' %>" placeholder="@seuperfil">
+    </label>
+    <label>WhatsApp (só membros verificados veem)
+      <input type="text" name="whatsapp" maxlength="40" value="<%= valores.whatsapp || '' %>">
+    </label>
+    <label>Site (opcional)
+      <input type="text" name="site" maxlength="200" value="<%= valores.site || '' %>" placeholder="https://...">
+    </label>
+    <label>Nova senha (deixe em branco para manter)
+      <input type="password" name="nova_senha" minlength="8" autocomplete="new-password">
+    </label>
+    <button class="btn">Salvar</button>
+  </form>
+</section>
+
+<aside class="coluna-lateral">
+  <div class="caixa caixa-centro">
+    <%- include('../partials/avatar', { pessoa: usuario, tamanho: 'avatar-grande' }) %>
+    <form method="post" action="/perfil/foto" enctype="multipart/form-data" class="form form-foto">
+      <label class="mini">Foto de perfil (JPG/PNG/WebP, até 6 MB)
+        <input type="file" name="foto" accept="image/jpeg,image/png,image/webp" required>
+      </label>
+      <button class="btn btn-pequeno">Enviar foto</button>
+    </form>
+  </div>
+  <div class="caixa">
+    <h3><%= jogo.nivel.icone %> Nível <%= jogo.nivel.nome %></h3>
+    <p><strong><%= jogo.pontos %></strong> pontos · <a href="/negocios">pontos e negócios</a></p>
+    <% if (!usuario.foto || !usuario.bio) { %><p class="mini muted">Complete foto e bio para ganhar +20 pontos.</p><% } %>
+  </div>
+  <div class="caixa">
+    <h3>Conta</h3>
+    <p class="mini muted"><%= usuario.email %></p>
+    <p><a href="/curriculo">📄 Meu currículo</a><br><a href="/convites">🎟️ Meus convites</a><br><a href="/vagas/nova">+ Publicar vaga</a></p>
+    <form method="post" action="/sair"><button class="btn btn-pequeno btn-secundario">Sair da conta</button></form>
+  </div>
+</aside>
+</div>
+
+<%- include('../partials/foot') %>

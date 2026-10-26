@@ -1,0 +1,80 @@
+<%- include('../partials/head') %>
+
+<h1>Quero doar 💛</h1>
+
+<% if (pedidoSelecionado) { %>
+  <div class="aviso aviso-info">
+    Você está oferecendo doação direto para <strong><%= pedidoSelecionado.nome %></strong><%= pedidoSelecionado.cidade ? ' (' + pedidoSelecionado.cidade + ')' : '' %>,
+    que precisa de: <strong><%= pedidoSelecionado.item %></strong>.
+  </div>
+<% } else if (necessidadeSelecionada && necessidadeSelecionada.status === 'recebida') { %>
+  <div class="aviso aviso-atencao">
+    <strong><%= necessidadeSelecionada.campanha_beneficiario %> já recebeu "<%= necessidadeSelecionada.titulo %>"</strong>. 🙏<br>
+    Mas tem outras pessoas precisando disso. Se você quiser, a gente repassa sua doação para alguém que ainda precisa.
+    <a href="/corrente/pedidos">Ver quem precisa</a>
+  </div>
+<% } else if (necessidadeSelecionada) { %>
+  <div class="aviso aviso-info">Doação para <strong><%= necessidadeSelecionada.campanha_beneficiario %></strong>: <strong><%= necessidadeSelecionada.titulo %></strong>.</div>
+<% } %>
+
+<% if (erros.length) { %>
+  <div class="aviso aviso-erro"><ul><% for (const e of erros) { %><li><%= e %></li><% } %></ul></div>
+<% } %>
+
+<form method="post" action="/corrente/ajudar" class="form">
+  <input type="text" name="site" class="hp" tabindex="-1" autocomplete="off">
+  <% if (pedidoSelecionado) { %><input type="hidden" name="pedido_id" value="<%= pedidoSelecionado.id %>"><% } %>
+
+  <label>Seu nome
+    <input type="text" name="nome" required maxlength="120" value="<%= valores.nome || '' %>">
+  </label>
+  <label>WhatsApp ou e-mail para contato
+    <input type="text" name="contato" required maxlength="120" value="<%= valores.contato || '' %>" placeholder="(11) 99999-9999">
+    <small>Só quem organiza a campanha vê isso. Usamos para combinar a entrega.</small>
+  </label>
+  <label>Sua cidade
+    <input type="text" name="cidade" maxlength="120" value="<%= valores.cidade || '' %>">
+  </label>
+
+  <% if (!pedidoSelecionado) { %>
+  <label>É para um item de alguma campanha?
+    <select name="necessidade_id">
+      <option value="">Não, é uma doação livre (a organização encaminha)</option>
+      <% for (const g of grupos) { %>
+        <optgroup label="<%= g.titulo %> (para <%= g.beneficiario %>)">
+          <% for (const n of g.itens) { %>
+            <option value="<%= n.id %>" <%= (valores.necessidade_id || (necessidadeSelecionada && necessidadeSelecionada.id)) == n.id ? 'selected' : '' %>><%= n.titulo %><%= n.status === 'recebida' ? ' (já recebeu)' : '' %></option>
+          <% } %>
+        </optgroup>
+      <% } %>
+    </select>
+  </label>
+  <% } %>
+
+  <label>O que você quer doar?
+    <input type="text" name="item" required maxlength="200" value="<%= valores.item || (pedidoSelecionado ? pedidoSelecionado.item : '') || (necessidadeSelecionada ? necessidadeSelecionada.titulo : '') %>" placeholder="Ex.: cesta básica, uma cadeira de rodas, remédio X, R$ 50...">
+  </label>
+  <label>Tipo
+    <select name="categoria">
+      <% for (const c of categorias) { %>
+        <option value="<%= c %>" <%= (valores.categoria || (pedidoSelecionado && pedidoSelecionado.categoria) || (necessidadeSelecionada && necessidadeSelecionada.categoria)) === c ? 'selected' : '' %>><%= c %></option>
+      <% } %>
+    </select>
+  </label>
+  <label>Detalhes (opcional)
+    <textarea name="descricao" rows="3" maxlength="1000" placeholder="Quantidade, tamanho, marca, como prefere entregar..."><%= valores.descricao || '' %></textarea>
+  </label>
+
+  <% if (!pedidoSelecionado) { %>
+  <fieldset class="opcao">
+    <legend>Se o item já tiver sido recebido, o que fazer com sua doação?</legend>
+    <label class="radio"><input type="radio" name="autoriza_repasse" value="1" <%= valores.autoriza_repasse === false ? '' : 'checked' %>> Pode repassar para outra pessoa que precisa 💛</label>
+    <label class="radio"><input type="radio" name="autoriza_repasse" value="0" <%= valores.autoriza_repasse === false ? 'checked' : '' %>> Prefiro que entrem em contato comigo antes</label>
+  </fieldset>
+  <% } %>
+
+  <button type="submit" class="btn btn-grande">Enviar minha oferta</button>
+  <% if (usuario) { %><small class="muted">Quando a doação for entregue, você ganha 20 pontos.</small><% } %>
+</form>
+
+<%- include('../partials/foot') %>

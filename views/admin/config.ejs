@@ -1,0 +1,40 @@
+<%- include('../partials/head') %>
+
+<h1>Configurações</h1>
+
+<form method="post" action="/admin/config" class="form">
+  <h2>Rede</h2>
+  <label>Nome da rede
+    <input type="text" name="nome_rede" required maxlength="120" value="<%= config.nome_rede %>">
+  </label>
+  <label>Slogan
+    <input type="text" name="slogan" maxlength="200" value="<%= config.slogan %>">
+  </label>
+  <label>Descrição (página inicial)
+    <textarea name="descricao_rede" rows="4" maxlength="4000"><%= config.descricao_rede %></textarea>
+  </label>
+  <label>Cidade/região de foco (opcional)
+    <input type="text" name="cidade_foco" maxlength="120" value="<%= config.cidade_foco %>">
+  </label>
+  <label>Nome do selo (ex.: Patriota, Verificado, Membro)
+    <input type="text" name="nome_selo" required maxlength="40" value="<%= config.nome_selo %>">
+  </label>
+  <label class="radio"><input type="checkbox" name="cadastro_aberto" value="1" <%= config.cadastro_aberto === '1' ? 'checked' : '' %>> Cadastro aberto (desmarque para aceitar só por convite)</label>
+
+  <h2><%= config.nome_campanha %></h2>
+  <label>Nome do módulo de ajuda
+    <input type="text" name="nome_campanha" required maxlength="120" value="<%= config.nome_campanha %>">
+  </label>
+  <label>Descrição (página inicial da corrente)
+    <textarea name="descricao_corrente" rows="3" maxlength="2000"><%= config.descricao_corrente %></textarea>
+  </label>
+  <label>WhatsApp da organização (só números com DDD)
+    <input type="text" name="whatsapp_contato" maxlength="40" value="<%= config.whatsapp_contato %>">
+  </label>
+  <label>Cidade
+    <input type="text" name="cidade" maxlength="120" value="<%= config.cidade %>">
+  </label>
+  <button class="btn btn-grande">Salvar</button>
+</form>
+
+<%- include('../partials/foot') %>

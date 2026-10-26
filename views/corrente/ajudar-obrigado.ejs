@@ -1,0 +1,48 @@
+<%- include('../partials/head') %>
+
+<section class="hero">
+  <% if (oferta.status === 'repassada') { %>
+    <h1>Obrigado! 💛</h1>
+    <p class="lead">Sua oferta de <strong><%= oferta.item %></strong> foi registrada para quem pediu <strong><%= oferta.pedido_item %></strong>.
+      A organização vai colocar vocês em contato para combinar a entrega.</p>
+  <% } else if (oferta.status === 'disponivel') { %>
+    <h1>Sua doação vai seguir a corrente 🔗💛</h1>
+    <p class="lead"><%= oferta.campanha_beneficiario || 'A campanha' %> já recebeu <strong><%= oferta.necessidade_titulo %></strong>, então sua oferta de
+      <strong><%= oferta.item %></strong> ficou disponível para outra pessoa que precisa. Vamos entrar em contato quando encontrar quem receber.</p>
+  <% } else if (oferta.necessidade_titulo && oferta.necessidade_status === 'recebida') { %>
+    <h1>Obrigado! 💛</h1>
+    <p class="lead"><%= oferta.campanha_beneficiario || 'A campanha' %> já recebeu <strong><%= oferta.necessidade_titulo %></strong>. Como você pediu, vamos falar com você antes de decidir o que fazer com sua doação.</p>
+  <% } else if (oferta.necessidade_titulo) { %>
+    <h1>Obrigado! 💛</h1>
+    <p class="lead">Sua oferta de <strong><%= oferta.item %></strong> para <strong><%= oferta.campanha_beneficiario %></strong> foi registrada. Quem cuida da campanha vai entrar em contato para combinar a entrega.</p>
+  <% } else { %>
+    <h1>Obrigado! 💛</h1>
+    <p class="lead">Sua oferta de <strong><%= oferta.item %></strong> foi registrada. A organização vai encaminhar para quem precisa e entrar em contato com você.</p>
+  <% } %>
+</section>
+
+<% if (pedidosAbertos.length) { %>
+<section>
+  <h2>Pessoas que estão precisando agora</h2>
+  <p class="muted">Se quiser, escolha diretamente para quem sua doação vai.</p>
+  <ul class="cards">
+    <% for (const p of pedidosAbertos) { %>
+      <li class="card">
+        <span class="tag"><%= p.categoria %></span>
+        <h3><%= p.item %></h3>
+        <p class="muted"><%= p.nome %><%= p.cidade ? ' · ' + p.cidade : '' %></p>
+        <a href="/corrente/ajudar?pedido=<%= p.id %>" class="btn btn-pequeno">Quero doar para essa pessoa</a>
+      </li>
+    <% } %>
+  </ul>
+  <p><a href="/corrente/pedidos">Ver todos os pedidos →</a></p>
+</section>
+<% } %>
+
+<p class="acoes">
+  <% if (oferta.campanha_id) { %><a href="/corrente/campanha/<%= oferta.campanha_id %>" class="btn btn-secundario">Voltar à campanha</a><% } %>
+  <a href="/corrente" class="btn btn-secundario">Voltar à Corrente</a>
+  <a href="/corrente/ajudar" class="btn btn-secundario">Oferecer outra doação</a>
+</p>
+
+<%- include('../partials/foot') %>

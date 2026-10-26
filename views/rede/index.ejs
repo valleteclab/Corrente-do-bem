@@ -1,0 +1,73 @@
+<%- include('../partials/head') %>
+
+<section class="hero hero-bandeira">
+  <div class="hero-texto">
+    <h1><%= config.nome_rede %></h1>
+    <p class="lead"><%= config.slogan %></p>
+    <p><%= config.descricao_rede %></p>
+    <div class="acoes">
+      <% if (usuario) { %>
+        <a href="/feed" class="btn btn-grande">Ir para o feed</a>
+        <a href="/diretorio" class="btn btn-secundario">Explorar o diretório</a>
+      <% } else { %>
+        <a href="/cadastrar" class="btn btn-grande">Criar minha conta</a>
+        <a href="/entrar" class="btn btn-secundario">Já sou membro</a>
+      <% } %>
+    </div>
+  </div>
+</section>
+
+<section class="numeros">
+  <div class="numero"><strong><%= stats.verificados %></strong><span>membros verificados</span></div>
+  <div class="numero"><strong><%= stats.empresas %></strong><span>empresas e profissionais</span></div>
+  <div class="numero"><strong><%= stats.cidades %></strong><span>cidades</span></div>
+  <div class="numero"><strong><%= vagas.length %></strong><span>vagas abertas</span></div>
+</section>
+
+<section class="pilares">
+  <div class="pilar pilar-verde">
+    <h3>🛍️ Comércio</h3>
+    <p>Encontre lojas, serviços e profissionais da comunidade perto de você. Avalie e indique.</p>
+    <a href="/diretorio">Ver diretório →</a>
+  </div>
+  <div class="pilar pilar-amarelo">
+    <h3>💼 Trabalho</h3>
+    <p>Empresas da rede publicam vagas. Membros verificados se candidatam com um clique.</p>
+    <a href="/vagas">Ver vagas →</a>
+  </div>
+  <div class="pilar pilar-azul">
+    <h3>🤝 Ajuda</h3>
+    <p>A <%= config.nome_campanha %> conecta quem quer doar com quem precisa, e repassa o que sobra.</p>
+    <a href="/corrente">Ver a corrente →</a>
+  </div>
+</section>
+
+<% if (destaques.length) { %>
+<section>
+  <h2>Empresas em destaque</h2>
+  <ul class="cards">
+    <% for (const e of destaques) { %>
+      <li class="card card-membro">
+        <%- include('../partials/avatar', { pessoa: e, tamanho: '' }) %>
+        <div>
+          <h3><a href="/u/<%= e.id %>"><%= e.nome %></a> <span class="selo" title="Selo <%= config.nome_selo %>">✓</span></h3>
+          <p class="muted"><%= e.categoria %><%= e.cidade ? ' · ' + e.cidade : '' %><%= e.estado ? '/' + e.estado : '' %></p>
+          <p class="mini"><%- include('../partials/nivel', { pontos: e.pontos }) %> <% if (e.nota_media) { %><span class="estrelas">★ <%= e.nota_media %></span><% } %> <% if (e.negocios) { %><span class="muted">· 🔗 <%= e.negocios %></span><% } %></p>
+        </div>
+      </li>
+    <% } %>
+  </ul>
+</section>
+<% } %>
+
+<section class="destaque">
+  <h2>Como entrar</h2>
+  <ol>
+    <li><strong>Crie sua conta</strong> como pessoa ou empresa.</li>
+    <li><strong>Ganhe o selo <%= config.nome_selo %></strong> <span class="selo">✓</span>: por <strong>convite</strong> de quem já tem o selo (entra na hora) ou mostrando suas redes sociais e fotos para a moderação.</li>
+    <li><strong>Movimente a rede</strong>: compre de membros, avalie, convide, publique. Cada ação dá pontos, sobe seu nível e seu lugar no <a href="/ranking">ranking</a>.</li>
+  </ol>
+  <p class="mini muted">Fotos enviadas para o selo são apagadas assim que o pedido é decidido. Só a moderação vê. <a href="/termos">Saiba mais</a>.</p>
+</section>
+
+<%- include('../partials/foot') %>

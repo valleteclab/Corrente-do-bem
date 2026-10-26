@@ -1,0 +1,6 @@
+<%- include('../partials/head') %>
+<p class="mini"><a href="/feed">← Feed</a></p>
+<ul class="posts post-unico">
+  <%- include('../partials/post', { p: post, voltar: '/p/' + post.id, compacto: false }) %>
+</ul>
+<%- include('../partials/foot') %>

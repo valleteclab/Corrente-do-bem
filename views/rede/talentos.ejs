@@ -1,0 +1,38 @@
+<%- include('../partials/head') %>
+
+<nav class="abas abas-feed">
+  <a href="/vagas">💼 Vagas</a>
+  <a href="/talentos" class="ativo">🧑‍💼 Talentos</a>
+</nav>
+
+<div class="titulo-acao">
+  <h1>Talentos</h1>
+  <% if (usuario && usuario.tipo === 'pessoa') { %><a href="/curriculo" class="btn">📄 Meu currículo</a><% } %>
+</div>
+<p class="lead">Membros com selo que estão procurando trabalho. Empresas: encontre gente da comunidade.</p>
+
+<form method="get" action="/talentos" class="filtro filtro-linha">
+  <input type="text" name="q" placeholder="Profissão ou palavra-chave" value="<%= filtro.busca %>" maxlength="120">
+  <input type="text" name="cidade" placeholder="Cidade" value="<%= filtro.cidade %>" maxlength="120">
+  <button class="btn btn-pequeno btn-secundario">Buscar</button>
+</form>
+
+<% if (talentos.length === 0) { %>
+  <p class="vazio">Ninguém procurando trabalho com esses filtros por enquanto.</p>
+<% } else { %>
+  <ul class="cards">
+    <% for (const t of talentos) { %>
+      <li class="card card-membro">
+        <%- include('../partials/avatar', { pessoa: t, tamanho: '' }) %>
+        <div>
+          <h3><a href="/u/<%= t.id %>"><%= t.nome %></a> <span class="selo">✓</span></h3>
+          <p><strong><%= t.profissao %></strong><%= t.cidade ? ' · ' + t.cidade : '' %><%= t.estado ? '/' + t.estado : '' %></p>
+          <% if (t.curriculo) { %><p class="mini"><%= t.curriculo.slice(0, 200) %><%= t.curriculo.length > 200 ? '…' : '' %></p><% } %>
+          <% if (t.curriculo_arquivo && usuario && usuario.status_verificacao === 'verificado') { %><p class="mini"><a href="/u/<%= t.id %>/curriculo" target="_blank">📎 Currículo em PDF</a></p><% } %>
+        </div>
+      </li>
+    <% } %>
+  </ul>
+<% } %>
+
+<%- include('../partials/foot') %>

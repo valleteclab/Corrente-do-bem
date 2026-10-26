@@ -1,0 +1,39 @@
+<%- include('../partials/head') %>
+
+<h1>Diretório</h1>
+<p class="lead">Empresas, profissionais e membros verificados da rede.</p>
+
+<form method="get" action="/diretorio" class="filtro filtro-grade">
+  <input type="text" name="q" placeholder="Buscar por nome" value="<%= filtro.busca %>" maxlength="120">
+  <input type="text" name="cidade" placeholder="Cidade" value="<%= filtro.cidade %>" maxlength="120">
+  <select name="tipo">
+    <option value="">Todos</option>
+    <option value="empresa" <%= filtro.tipo === 'empresa' ? 'selected' : '' %>>Empresas</option>
+    <option value="pessoa" <%= filtro.tipo === 'pessoa' ? 'selected' : '' %>>Pessoas</option>
+  </select>
+  <select name="categoria">
+    <option value="">Todas as categorias</option>
+    <% for (const c of categoriasEmpresa) { %><option value="<%= c %>" <%= filtro.categoria === c ? 'selected' : '' %>><%= c %></option><% } %>
+  </select>
+  <button class="btn btn-pequeno">Filtrar</button>
+</form>
+
+<% if (membros.length === 0) { %>
+  <p class="vazio">Ninguém encontrado com esses filtros.</p>
+<% } else { %>
+  <ul class="cards">
+    <% for (const m of membros) { %>
+      <li class="card card-membro">
+        <%- include('../partials/avatar', { pessoa: m, tamanho: '' }) %>
+        <div>
+          <h3><a href="/u/<%= m.id %>"><%= m.nome %></a> <span class="selo" title="Verificado">✓</span></h3>
+          <p class="muted"><%= rotulos.tipoUsuario[m.tipo] %><%= m.categoria ? ' · ' + m.categoria : '' %><%= m.cidade ? ' · ' + m.cidade : '' %><%= m.estado ? '/' + m.estado : '' %></p>
+          <% if (m.bio) { %><p class="mini"><%= m.bio.slice(0, 140) %><%= m.bio.length > 140 ? '…' : '' %></p><% } %>
+          <% if (m.nota_media) { %><p class="estrelas">★ <%= m.nota_media %> <span class="muted">(<%= m.total_avaliacoes %>)</span></p><% } %>
+        </div>
+      </li>
+    <% } %>
+  </ul>
+<% } %>
+
+<%- include('../partials/foot') %>

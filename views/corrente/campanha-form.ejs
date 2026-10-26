@@ -1,0 +1,35 @@
+<%- include('../partials/head') %>
+
+<h1>Criar campanha</h1>
+<p class="lead">Conhece alguém que está precisando? Crie a campanha, liste o que falta e compartilhe o link. Você cuida da campanha: marca o que já chegou e combina as entregas.</p>
+
+<% if (erros.length) { %>
+  <div class="aviso aviso-erro"><ul><% for (const e of erros) { %><li><%= e %></li><% } %></ul></div>
+<% } %>
+
+<form method="post" action="/corrente/campanhas/nova" class="form">
+  <label>Título da campanha
+    <input type="text" name="titulo" required maxlength="120" value="<%= valores.titulo || '' %>" placeholder="Ex.: Ajuda para a Dona Maria">
+  </label>
+  <label>Quem está sendo ajudado (como aparece no site)
+    <input type="text" name="beneficiario" required maxlength="120" value="<%= valores.beneficiario || '' %>" placeholder="Ex.: Dona Maria, a família Silva, o Seu João...">
+  </label>
+  <label>História
+    <textarea name="historia" rows="6" maxlength="4000" required placeholder="Conte quem é a pessoa, o que aconteceu e por que precisa de ajuda."><%= valores.historia || '' %></textarea>
+  </label>
+  <div class="linha-2 linha-2-igual">
+    <label>Cidade
+      <input type="text" name="cidade" maxlength="120" value="<%= valores.cidade || '' %>">
+    </label>
+    <label>WhatsApp para combinar entregas (só números)
+      <input type="text" name="whatsapp" maxlength="40" value="<%= valores.whatsapp || '' %>">
+    </label>
+  </div>
+  <label>Link de vídeo (opcional)
+    <input type="url" name="link_video" maxlength="500" value="<%= valores.link_video || '' %>" placeholder="https://...">
+  </label>
+  <p class="mini muted">Depois de criar, você adiciona a lista do que falta e pode colocar uma foto.</p>
+  <button class="btn btn-grande">Criar campanha</button>
+</form>
+
+<%- include('../partials/foot') %>

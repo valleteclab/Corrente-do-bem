@@ -1,0 +1,67 @@
+<%- include('../partials/head') %>
+
+<p class="mini"><a href="/vagas">← Todas as vagas</a></p>
+<h1><%= vaga.titulo %> <% if (!vaga.aberta) { %><span class="badge badge-cancelada">fechada</span><% } %></h1>
+<p class="muted"><span class="tag"><%= vaga.tipo %></span> <%= vaga.cidade || vaga.empresa_cidade %> · publicada em <%= formatarData(vaga.criado_em) %></p>
+
+<section class="card card-membro">
+  <%- include('../partials/avatar', { pessoa: { nome: vaga.empresa_nome, foto: vaga.empresa_foto, tipo: 'empresa' }, tamanho: '' }) %>
+  <div>
+    <h3><a href="/u/<%= vaga.empresa_id %>"><%= vaga.empresa_nome %></a> <span class="selo">✓</span></h3>
+    <p class="muted"><%= vaga.empresa_categoria %></p>
+  </div>
+</section>
+
+<section class="texto-longo"><p style="white-space: pre-line"><%= vaga.descricao %></p></section>
+
+<% if (dona) { %>
+  <section>
+    <form method="post" action="/vagas/<%= vaga.id %>/fechar" class="inline">
+      <input type="hidden" name="aberta" value="<%= vaga.aberta ? '0' : '1' %>">
+      <button class="btn btn-pequeno btn-secundario"><%= vaga.aberta ? 'Fechar vaga' : 'Reabrir vaga' %></button>
+    </form>
+    <h2>Candidaturas (<%= candidaturas.length %>)</h2>
+    <% if (candidaturas.length === 0) { %>
+      <p class="vazio">Ninguém se candidatou ainda.</p>
+    <% } else { %>
+      <ul class="lista-admin">
+        <% for (const c of candidaturas) { %>
+          <li class="item-admin">
+            <div class="item-cab">
+              <%- include('../partials/avatar', { pessoa: c, tamanho: 'avatar-mini' }) %>
+              <a href="/u/<%= c.usuario_id %>"><strong><%= c.nome %></strong></a>
+              <% if (c.status_verificacao === 'verificado') { %><span class="selo">✓</span><% } %>
+              <span class="muted mini"><%= c.cidade %> · <%= formatarData(c.criado_em) %></span>
+            </div>
+            <% if (c.mensagem) { %><p><%= c.mensagem %></p><% } %>
+            <p class="mini">
+              <%= c.email %>
+              <% if (c.whatsapp) { %> · <a href="<%= linkWhatsapp(c.whatsapp, 'Oi! Vi sua candidatura à vaga ' + vaga.titulo + ' na ' + config.nome_rede + '.') %>" target="_blank" rel="noopener">WhatsApp</a><% } %>
+              <% if (c.instagram) { %> · <a href="https://instagram.com/<%= encodeURIComponent(c.instagram) %>" target="_blank" rel="noopener">@<%= c.instagram %></a><% } %>
+            </p>
+          </li>
+        <% } %>
+      </ul>
+    <% } %>
+  </section>
+<% } else if (vaga.aberta) { %>
+  <section class="destaque">
+    <% if (!usuario) { %>
+      <p><a href="/entrar?voltar=/vagas/<%= vaga.id %>">Entre</a> ou <a href="/cadastrar">crie sua conta</a> para se candidatar.</p>
+    <% } else if (usuario.status_verificacao !== 'verificado') { %>
+      <p>Para se candidatar, <a href="/verificacao">complete sua verificação</a>.</p>
+    <% } else if (jaCandidatou) { %>
+      <p>✓ Você já se candidatou. A empresa tem seu perfil e contato.</p>
+    <% } else { %>
+      <form method="post" action="/vagas/<%= vaga.id %>/candidatar" class="form">
+        <label>Mensagem para a empresa (opcional)
+          <textarea name="mensagem" rows="3" maxlength="1000" placeholder="Conte rapidamente sua experiência..."></textarea>
+        </label>
+        <button class="btn btn-grande">Candidatar-me</button>
+        <small class="muted">A empresa vai ver seu perfil, e-mail, WhatsApp e Instagram.</small>
+      </form>
+    <% } %>
+  </section>
+<% } %>
+
+<%- include('../partials/foot') %>

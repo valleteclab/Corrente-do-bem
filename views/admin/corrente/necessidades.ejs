@@ -1,0 +1,59 @@
+<%- include('../../partials/head') %>
+
+<h1>Itens das campanhas</h1>
+<p class="muted">Cada item pertence a uma campanha. Quem cuida da campanha gerencia pela página dela; aqui a moderação vê tudo. Marcar "recebido" libera as ofertas pendentes para repasse.</p>
+
+<section class="form-caixa">
+  <h2><%= editando ? 'Editar item' : 'Adicionar item' %></h2>
+  <form method="post" action="<%= editando ? '/admin/corrente/necessidades/' + editando.id + '/editar' : '/admin/corrente/necessidades' %>" class="form form-linha">
+    <% if (!editando) { %>
+    <label>Campanha
+      <select name="campanha_id">
+        <% for (const c of campanhas) { %><option value="<%= c.id %>"><%= c.titulo %> (<%= c.beneficiario %>)</option><% } %>
+        <option value="">Pedidos da comunidade (sem campanha)</option>
+      </select>
+    </label>
+    <% } %>
+    <label>Item
+      <input type="text" name="titulo" required maxlength="200" value="<%= editando ? editando.titulo : '' %>">
+    </label>
+    <label>Tipo
+      <select name="categoria"><% for (const c of categorias) { %><option value="<%= c %>" <%= editando && editando.categoria === c ? 'selected' : '' %>><%= c %></option><% } %></select>
+    </label>
+    <label>Detalhes
+      <input type="text" name="descricao" maxlength="1000" value="<%= editando ? editando.descricao : '' %>">
+    </label>
+    <button class="btn"><%= editando ? 'Salvar' : 'Adicionar' %></button>
+    <% if (editando) { %><a href="/admin/corrente/necessidades" class="btn btn-secundario">Cancelar</a><% } %>
+  </form>
+</section>
+
+<% if (necessidades.length === 0) { %>
+  <p class="vazio">Nenhum item cadastrado ainda.</p>
+<% } else { %>
+<ul class="lista-admin">
+  <% for (const n of necessidades) { %>
+    <li class="item-admin">
+      <div class="item-cab">
+        <span class="badge badge-<%= n.status %>"><%= rotulos.necessidade[n.status] %></span>
+        <strong><%= n.titulo %></strong>
+        <span class="tag"><%= n.categoria %></span>
+        <% if (n.campanha_id) { %><a href="/corrente/campanha/<%= n.campanha_id %>" class="mini">📣 <%= n.campanha_titulo %></a><% } %>
+        <% if (n.ofertas_pendentes > 0) { %><span class="muted"><%= n.ofertas_pendentes %> oferta(s) pendente(s)</span><% } %>
+      </div>
+      <% if (n.descricao) { %><p class="muted"><%= n.descricao %></p><% } %>
+      <div class="item-acoes">
+        <% if (n.status === 'aberta') { %>
+          <form method="post" action="/admin/corrente/necessidades/<%= n.id %>/recebida" class="inline"><button class="btn btn-pequeno btn-ok">✓ Recebido</button></form>
+        <% } else { %>
+          <form method="post" action="/admin/corrente/necessidades/<%= n.id %>/reabrir" class="inline"><button class="btn btn-pequeno btn-secundario">Ainda precisa (reabrir)</button></form>
+        <% } %>
+        <a href="/admin/corrente/necessidades/<%= n.id %>/editar" class="btn btn-pequeno btn-secundario">Editar</a>
+        <form method="post" action="/admin/corrente/necessidades/<%= n.id %>/remover" class="inline" onsubmit="return confirm('Remover este item?')"><button class="btn btn-pequeno btn-perigo">Remover</button></form>
+      </div>
+    </li>
+  <% } %>
+</ul>
+<% } %>
+
+<%- include('../../partials/foot') %>

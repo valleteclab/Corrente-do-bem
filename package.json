@@ -1,0 +1,23 @@
+{
+  "name": "elo-brasil",
+  "version": "0.1.0",
+  "description": "Rede para conectar pessoas e empresas com valores em comum: diretório, vagas, feed, verificação de identidade por selfie/documento/convite, e a Corrente do Bem para doações com repasse por IA.",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node --no-warnings src/server.js",
+    "dev": "node --no-warnings --watch src/server.js",
+    "test": "node --no-warnings --test 'test/**/*.test.js'"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.0.0",
+    "cookie-parser": "^1.4.7",
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "multer": "^2.5.0"
+  }
+}

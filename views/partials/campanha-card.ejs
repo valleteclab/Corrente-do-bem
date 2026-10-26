@@ -1,0 +1,11 @@
+<li class="card card-campanha">
+  <% if (c.foto) { %><img class="campanha-foto" src="<%= urlFoto(c.foto) %>" alt=""><% } %>
+  <div>
+    <span class="tag"><%= c.status === 'ativa' ? (c.abertas + ' item(ns) faltando') : 'encerrada' %></span>
+    <h3><a href="/corrente/campanha/<%= c.id %>"><%= c.titulo %></a></h3>
+    <p class="muted">Para <%= c.beneficiario %><%= c.cidade ? ' · ' + c.cidade : '' %></p>
+    <p class="mini"><%= c.historia.slice(0, 140) %><%= c.historia.length > 140 ? '…' : '' %></p>
+    <p class="mini muted">✅ <%= c.recebidas %> recebidos · 💛 <%= c.ofertas %> ofertas</p>
+  </div>
+  <a href="/corrente/campanha/<%= c.id %>" class="btn btn-pequeno">Ver campanha</a>
+</li>

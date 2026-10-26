@@ -1,0 +1,38 @@
+<%- include('../partials/head') %>
+
+<h1>Meus convites</h1>
+
+<% if (usuario.status_verificacao !== 'verificado') { %>
+  <div class="aviso aviso-info">Só membros verificados podem convidar. <a href="/verificacao">Complete sua verificação</a>.</div>
+<% } else { %>
+  <p class="lead">Você tem <strong><%= usuario.convites_restantes %></strong> convite(s) disponível(is). Convide quem você conhece e confia: você responde pelas suas indicações.</p>
+  <form method="post" action="/convites" class="inline">
+    <button class="btn" <%= usuario.convites_restantes > 0 ? '' : 'disabled' %>>Gerar novo convite</button>
+  </form>
+<% } %>
+
+<% if (convites.length) { %>
+<section>
+  <h2>Convites gerados</h2>
+  <ul class="lista-admin">
+    <% for (const c of convites) { %>
+      <li class="item-admin">
+        <div class="item-cab">
+          <code class="codigo"><%= c.codigo %></code>
+          <% if (c.usado_por) { %>
+            <span class="badge badge-verificado">usado por <%= c.usado_por_nome %></span>
+          <% } else { %>
+            <span class="badge badge-aberta">disponível</span>
+          <% } %>
+          <span class="muted mini"><%= formatarData(c.criado_em) %></span>
+        </div>
+        <% if (!c.usado_por) { %>
+          <p class="mini">Link: <input type="text" readonly value="<%= urlBase %>/cadastrar?convite=<%= c.codigo %>" class="copiar" onclick="this.select()"></p>
+        <% } %>
+      </li>
+    <% } %>
+  </ul>
+</section>
+<% } %>
+
+<%- include('../partials/foot') %>

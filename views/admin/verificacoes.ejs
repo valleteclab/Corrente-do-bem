@@ -1,0 +1,74 @@
+<%- include('../partials/head') %>
+
+<h1>Fila do selo <%= config.nome_selo %></h1>
+<% if (papelPainel === 'verificador') { %>
+  <div class="aviso aviso-info aviso-fino">Você é <strong>verificador</strong>: confira as redes e fotos e dê o selo só para quem é real e faz parte da comunidade. Em dúvida, recuse com um motivo claro ou deixe para a moderação.</div>
+<% } %>
+
+<nav class="abas">
+  <a href="/admin/verificacoes?status=em_analise" class="<%= statusFiltro === 'em_analise' ? 'ativo' : '' %>">Em análise</a>
+  <a href="/admin/verificacoes?status=verificado" class="<%= statusFiltro === 'verificado' ? 'ativo' : '' %>">Aprovados</a>
+  <a href="/admin/verificacoes?status=rejeitado" class="<%= statusFiltro === 'rejeitado' ? 'ativo' : '' %>">Recusados</a>
+</nav>
+
+<% if (!iaAtiva) { %><div class="aviso aviso-info">🤖 A triagem por IA está desativada (defina <code>ANTHROPIC_API_KEY</code>). A fila funciona normalmente, só sem a recomendação automática.</div><% } %>
+
+<% if (verificacoes.length === 0) { %>
+  <p class="vazio">Nada aqui.</p>
+<% } else { %>
+<ul class="lista-admin">
+  <% for (const v of verificacoes) { %>
+    <li class="item-admin">
+      <div class="item-cab">
+        <%- include('../partials/avatar', { pessoa: v, tamanho: 'avatar-mini' }) %>
+        <strong><%= v.nome %></strong>
+        <span class="tag"><%= rotulos.tipoUsuario[v.tipo] %></span>
+        <span class="muted">#<%= v.id %> · <%= formatarData(v.criado_em) %><%= v.cidade ? ' · ' + v.cidade : '' %><%= v.estado ? '/' + v.estado : '' %></span>
+        <% if (v.status !== 'em_analise') { %><span class="badge badge-<%= v.status %>"><%= rotulos.verificacao[v.status] %></span><% } %>
+      </div>
+      <div class="item-corpo">
+        <p class="mini muted"><%= v.email %> · <a href="/u/<%= v.usuario_id %>" target="_blank">ver perfil</a></p>
+        <p>
+          <% if (v.instagram) { %><a href="https://instagram.com/<%= encodeURIComponent(v.instagram) %>" target="_blank" rel="noopener" class="btn btn-pequeno btn-secundario">Instagram @<%= v.instagram %></a><% } %>
+          <% if (v.outras_redes) { %><span class="mini" style="white-space: pre-line"><%= v.outras_redes %></span><% } %>
+          <% if (!v.instagram && !v.outras_redes) { %><span class="muted mini">Nenhuma rede informada.</span><% } %>
+        </p>
+        <% if (v.bio) { %><p class="mini">Bio: <%= v.bio %></p><% } %>
+        <% if (v.observacao) { %><p class="obs">💬 <%= v.observacao %></p><% } %>
+        <% if (v.status === 'em_analise' && v.fotos.length) { %>
+          <div class="imagens-verificacao">
+            <% v.fotos.forEach((f, i) => { %>
+              <a href="/admin/verificacoes/<%= v.id %>/foto/<%= i %>" target="_blank"><img src="/admin/verificacoes/<%= v.id %>/foto/<%= i %>" alt="Foto <%= i + 1 %>" loading="lazy"></a>
+            <% }) %>
+          </div>
+        <% } else if (v.status !== 'em_analise') { %>
+          <p class="mini muted">Decidido por <%= v.decidido_por_nome || 'administração' %><%= v.decidido_em ? ' em ' + formatarData(v.decidido_em) : '' %><%= v.motivo_decisao ? ' · motivo: ' + v.motivo_decisao : '' %>. Fotos apagadas.</p>
+        <% } %>
+        <% if (v.analise_ia) { %>
+          <div class="ia"><p class="ia-resumo">🤖 <strong>IA recomenda: <%= v.recomendacao_ia %>.</strong> <%= v.analise_ia %></p></div>
+        <% } %>
+      </div>
+      <% if (v.status === 'em_analise') { %>
+      <div class="item-acoes">
+        <form method="post" action="/admin/verificacoes/<%= v.id %>/decidir" class="inline">
+          <input type="hidden" name="decisao" value="aprovar">
+          <button class="btn btn-pequeno btn-ok">✓ Dar o selo</button>
+        </form>
+        <form method="post" action="/admin/verificacoes/<%= v.id %>/decidir" class="inline obs-form">
+          <input type="hidden" name="decisao" value="rejeitar">
+          <input type="text" name="motivo" maxlength="500" placeholder="Motivo da recusa (a pessoa vê)">
+          <button class="btn btn-pequeno btn-perigo">Recusar</button>
+        </form>
+        <% if (iaAtiva) { %>
+          <form method="post" action="/admin/verificacoes/<%= v.id %>/ia" class="inline">
+            <button class="btn btn-pequeno btn-ia">🤖 <%= v.analise_ia ? 'Reanalisar' : 'Analisar com IA' %></button>
+          </form>
+        <% } %>
+      </div>
+      <% } %>
+    </li>
+  <% } %>
+</ul>
+<% } %>
+
+<%- include('../partials/foot') %>

@@ -1,0 +1,34 @@
+<%- include('../partials/head') %>
+
+<h1>Quem precisa de ajuda</h1>
+<p class="lead">Pedidos individuais abertos. Você pode doar direto para uma pessoa. Doações que sobram nas campanhas também chegam aqui.</p>
+
+<form method="get" action="/corrente/pedidos" class="filtro">
+  <label>Filtrar por tipo
+    <select name="categoria" onchange="this.form.submit()">
+      <option value="">Todos</option>
+      <% for (const c of categorias) { %><option value="<%= c %>" <%= categoriaFiltro === c ? 'selected' : '' %>><%= c %></option><% } %>
+    </select>
+  </label>
+  <noscript><button class="btn btn-pequeno">Filtrar</button></noscript>
+</form>
+
+<% if (pedidos.length === 0) { %>
+  <p class="vazio">Nenhum pedido aberto por enquanto. <a href="/corrente/pedir">Precisa de ajuda? Registre aqui.</a></p>
+<% } else { %>
+  <ul class="cards">
+    <% for (const p of pedidos) { %>
+      <li class="card">
+        <span class="tag"><%= p.categoria %></span>
+        <h3><%= p.item %></h3>
+        <p class="muted"><%= p.nome %><%= p.cidade ? ' · ' + p.cidade : '' %> · <%= formatarData(p.criado_em) %></p>
+        <% if (p.descricao) { %><p><%= p.descricao %></p><% } %>
+        <a href="/corrente/ajudar?pedido=<%= p.id %>" class="btn btn-pequeno">Quero doar para essa pessoa</a>
+      </li>
+    <% } %>
+  </ul>
+<% } %>
+
+<p class="acoes"><a href="/corrente/pedir" class="btn btn-secundario">Eu também preciso de ajuda</a> <a href="/corrente/campanhas" class="btn btn-secundario">Ver campanhas</a></p>
+
+<%- include('../partials/foot') %>

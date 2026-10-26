@@ -1,0 +1,91 @@
+<%- include('../partials/head') %>
+
+<h1>Meus pontos e negócios</h1>
+
+<section class="perfil-cab">
+  <div class="nivel-grande"><%= jogo.nivel.icone %></div>
+  <div>
+    <h2 style="margin-top:0">Nível <%= jogo.nivel.nome %> · <%= jogo.pontos %> pontos</h2>
+    <% if (jogo.nivel.proximo) { %>
+      <div class="barra"><div class="barra-cheia" style="width: <%= Math.min(100, Math.round(((jogo.pontos - jogo.nivel.minimo) / (jogo.nivel.proximo.minimo - jogo.nivel.minimo)) * 100)) %>%"></div></div>
+      <p class="mini muted">Faltam <strong><%= jogo.nivel.faltam %></strong> pontos para <%= jogo.nivel.proximo.icone %> <%= jogo.nivel.proximo.nome %>.</p>
+    <% } else { %>
+      <p class="mini muted">Você chegou ao nível máximo. 🏆</p>
+    <% } %>
+    <p><a href="/ranking">Ver ranking →</a></p>
+  </div>
+</section>
+
+<section>
+  <h2>Conquistas</h2>
+  <ul class="conquistas">
+    <% for (const c of jogo.conquistas) { %>
+      <li class="<%= c.conquistada ? '' : 'bloqueada' %>" title="<%= c.descricao %>"><span class="conquista-icone"><%= c.icone %></span><%= c.nome %><small><%= c.descricao %></small></li>
+    <% } %>
+  </ul>
+</section>
+
+<% if (usuario.tipo === 'empresa') { %>
+<section>
+  <h2>Negócios registrados com a sua empresa</h2>
+  <p class="muted">Clientes da rede registram quando compram de você. Confirme para os dois ganharem pontos e para o negócio contar no ranking.</p>
+  <% if (comoEmpresa.length === 0) { %>
+    <p class="vazio">Nenhum negócio registrado ainda. Peça aos clientes da rede para registrarem no seu perfil!</p>
+  <% } else { %>
+    <ul class="lista-admin">
+      <% for (const n of comoEmpresa) { %>
+        <li class="item-admin <%= n.status === 'recusado' ? 'status-cancelada' : '' %>">
+          <div class="item-cab">
+            <%- include('../partials/avatar', { pessoa: { nome: n.cliente_nome, foto: n.cliente_foto, tipo: n.cliente_tipo }, tamanho: 'avatar-mini' }) %>
+            <a href="/u/<%= n.cliente_id %>"><strong><%= n.cliente_nome %></strong></a>
+            <span class="badge badge-<%= n.status === 'confirmado' ? 'verificado' : n.status === 'pendente' ? 'pendente' : 'cancelada' %>"><%= n.status %></span>
+            <span class="muted mini"><%= n.cliente_cidade %> · <%= formatarData(n.criado_em) %></span>
+          </div>
+          <% if (n.descricao) { %><p><%= n.descricao %></p><% } %>
+          <% if (n.status === 'pendente') { %>
+            <div class="item-acoes">
+              <form method="post" action="/negocios/<%= n.id %>/decidir" class="inline"><input type="hidden" name="decisao" value="confirmar"><button class="btn btn-pequeno btn-ok">✓ Confirmar (+25 pontos para cada)</button></form>
+              <form method="post" action="/negocios/<%= n.id %>/decidir" class="inline"><input type="hidden" name="decisao" value="recusar"><button class="btn btn-pequeno btn-perigo">Não aconteceu</button></form>
+            </div>
+          <% } %>
+        </li>
+      <% } %>
+    </ul>
+  <% } %>
+</section>
+<% } %>
+
+<section>
+  <h2>Negócios que você fechou na rede</h2>
+  <% if (comoCliente.length === 0) { %>
+    <p class="vazio">Nenhum ainda. Encontre uma empresa no <a href="/diretorio">diretório</a> e, depois de comprar, registre no perfil dela.</p>
+  <% } else { %>
+    <ul class="lista-simples-cards">
+      <% for (const n of comoCliente) { %>
+        <li><a href="/u/<%= n.empresa_id %>"><strong><%= n.empresa_nome %></strong></a> <span class="badge badge-<%= n.status === 'confirmado' ? 'verificado' : n.status === 'pendente' ? 'pendente' : 'cancelada' %>"><%= n.status %></span> <%= n.descricao %> <span class="muted mini"><%= formatarData(n.criado_em) %></span></li>
+      <% } %>
+    </ul>
+  <% } %>
+</section>
+
+<section>
+  <h2>Histórico de pontos</h2>
+  <% if (historico.length === 0) { %>
+    <p class="vazio">Nada ainda. Complete seu perfil, convide amigos, avalie empresas e feche negócios na rede.</p>
+  <% } else { %>
+    <ul class="lista-simples-cards">
+      <% for (const h of historico) { %>
+        <li><strong>+<%= h.pontos %></strong> <%= acoes[h.acao] ? acoes[h.acao].rotulo : h.acao %> <span class="muted mini"><%= formatarData(h.criado_em) %></span></li>
+      <% } %>
+    </ul>
+  <% } %>
+</section>
+
+<section class="destaque">
+  <h2>Como ganhar pontos</h2>
+  <ul>
+    <% for (const [k, a] of Object.entries(acoes)) { %><li><strong>+<%= a.pontos %></strong> <%= a.rotulo %><%= a.limiteDia ? ` (até ${a.limiteDia} por dia)` : '' %></li><% } %>
+  </ul>
+</section>
+
+<%- include('../partials/foot') %>

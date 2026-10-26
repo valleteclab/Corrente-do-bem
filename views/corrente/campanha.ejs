@@ -1,0 +1,58 @@
+<%- include('../partials/head') %>
+
+<p class="mini"><a href="/corrente/campanhas">← Campanhas</a></p>
+
+<section class="hero hero-corrente">
+  <div class="campanha-cab">
+    <% if (campanha.foto) { %><img class="campanha-foto-grande" src="<%= urlFoto(campanha.foto) %>" alt=""><% } %>
+    <div class="hero-texto">
+      <h1><%= campanha.titulo %> <% if (campanha.status === 'encerrada') { %><span class="badge badge-cancelada">encerrada</span><% } %></h1>
+      <p class="lead">Para <strong><%= campanha.beneficiario %></strong><%= campanha.cidade ? ' · ' + campanha.cidade : '' %></p>
+      <p class="texto-bio"><%= campanha.historia %></p>
+      <% if (campanha.link_video) { %><p><a href="<%= campanha.link_video %>" target="_blank" rel="noopener">▶ Ver o vídeo</a></p><% } %>
+      <% if (dono) { %><p class="mini">Campanha criada por <a href="/u/<%= dono.id %>"><%= dono.nome %></a> <span class="selo">✓</span></p><% } %>
+      <div class="acoes">
+        <% if (campanha.status === 'ativa') { %><a href="/corrente/ajudar?campanha=<%= campanha.id %>" class="btn btn-grande">💛 Quero doar</a><% } %>
+        <% if (campanha.whatsapp) { %><a class="btn btn-whatsapp" href="<%= linkWhatsapp(campanha.whatsapp, 'Oi! Vi a campanha ' + campanha.titulo + ' e quero ajudar.') %>" target="_blank" rel="noopener">WhatsApp</a><% } %>
+        <% if (podeGerenciar) { %><a href="/corrente/campanha/<%= campanha.id %>/gerenciar" class="btn btn-secundario">Gerenciar</a><% } %>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>O que <%= campanha.beneficiario %> ainda precisa</h2>
+  <% if (abertas.length === 0) { %>
+    <p class="vazio"><%= campanha.status === 'ativa' ? 'Por enquanto não falta nada nesta campanha. 🎉' : 'Campanha encerrada.' %> A corrente continua: <a href="/corrente/pedidos">veja quem mais precisa</a>.</p>
+  <% } else { %>
+    <ul class="cards">
+      <% for (const n of abertas) { %>
+        <li class="card">
+          <span class="tag"><%= n.categoria %></span>
+          <h3><%= n.titulo %></h3>
+          <% if (n.descricao) { %><p><%= n.descricao %></p><% } %>
+          <% if (n.ofertas_pendentes) { %><p class="mini muted">💛 <%= n.ofertas_pendentes %> oferta(s) a caminho</p><% } %>
+          <a href="/corrente/ajudar?necessidade=<%= n.id %>" class="btn btn-pequeno">Quero doar isso</a>
+        </li>
+      <% } %>
+    </ul>
+  <% } %>
+</section>
+
+<% if (recebidas.length) { %>
+<section>
+  <h2>Já recebeu 🙏</h2>
+  <p class="muted">Se você queria doar um destes itens, sua doação pode seguir para outra pessoa que ainda precisa.</p>
+  <ul class="lista-recebidos">
+    <% for (const n of recebidas) { %>
+      <li>✅ <%= n.titulo %> <a class="mini" href="/corrente/ajudar?necessidade=<%= n.id %>">repassar minha doação</a></li>
+    <% } %>
+  </ul>
+</section>
+<% } %>
+
+<section class="destaque">
+  <p><strong>Compartilhe:</strong> <input type="text" readonly class="copiar" value="<%= urlBase %>/corrente/campanha/<%= campanha.id %>" onclick="this.select()"></p>
+</section>
+
+<%- include('../partials/foot') %>

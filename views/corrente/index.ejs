@@ -1,0 +1,67 @@
+<%- include('../partials/head') %>
+
+<section class="hero hero-corrente">
+  <div class="hero-texto">
+    <h1>💛 <%= config.nome_campanha %></h1>
+    <p class="lead"><%= config.descricao_corrente %></p>
+    <div class="acoes">
+      <a href="/corrente/ajudar" class="btn btn-grande">Quero doar</a>
+      <a href="/corrente/pedir" class="btn btn-secundario">Preciso de ajuda</a>
+      <% if (usuario && usuario.status_verificacao === 'verificado') { %><a href="/corrente/campanhas/nova" class="btn btn-secundario">+ Criar campanha</a><% } %>
+    </div>
+  </div>
+</section>
+
+<section class="numeros">
+  <div class="numero"><strong><%= stats.campanhas_ativas %></strong><span>campanhas ativas</span></div>
+  <div class="numero"><strong><%= stats.ofertas_total %></strong><span>doações oferecidas</span></div>
+  <div class="numero"><strong><%= stats.ofertas_repassadas %></strong><span>doações repassadas</span></div>
+  <div class="numero"><strong><%= stats.pedidos_abertos %></strong><span>pedidos esperando</span></div>
+</section>
+
+<section>
+  <div class="titulo-acao"><h2>Campanhas</h2><a href="/corrente/campanhas" class="mini">ver todas →</a></div>
+  <% if (campanhas.length === 0) { %>
+    <p class="vazio">Nenhuma campanha ativa. <% if (usuario && usuario.status_verificacao === 'verificado') { %><a href="/corrente/campanhas/nova">Crie a primeira</a> para alguém que precisa.<% } else { %>Membros com selo podem criar campanhas para quem precisa.<% } %></p>
+  <% } else { %>
+    <ul class="cards">
+      <% for (const c of campanhas) { %><%- include('../partials/campanha-card', { c }) %><% } %>
+    </ul>
+  <% } %>
+</section>
+
+<section>
+  <div class="titulo-acao"><h2>Pedidos de ajuda</h2><a href="/corrente/pedidos" class="mini">ver todos →</a></div>
+  <% if (pedidos.length === 0) { %>
+    <p class="vazio">Nenhum pedido aberto. <a href="/corrente/pedir">Precisa de algo? Registre aqui.</a></p>
+  <% } else { %>
+    <ul class="cards">
+      <% for (const p of pedidos) { %>
+        <li class="card">
+          <span class="tag"><%= p.categoria %></span>
+          <h3><%= p.item %></h3>
+          <p class="muted"><%= p.nome %><%= p.cidade ? ' · ' + p.cidade : '' %></p>
+          <a href="/corrente/ajudar?pedido=<%= p.id %>" class="btn btn-pequeno">Quero doar para essa pessoa</a>
+        </li>
+      <% } %>
+    </ul>
+  <% } %>
+</section>
+
+<section class="destaque">
+  <h2>Como funciona a corrente</h2>
+  <ol>
+    <li>Um membro cria uma <strong>campanha</strong> para alguém que precisa, com a lista do que falta.</li>
+    <li>Quem quer doar escolhe um item da campanha, um pedido individual, ou oferece o que tem.</li>
+    <li>Se o item <strong>já foi recebido</strong>, a doação não se perde: é <strong>repassada</strong> para o próximo da fila.</li>
+  </ol>
+  <a href="/corrente/como-funciona">Entenda melhor →</a>
+</section>
+
+<% if (config.whatsapp_contato) { %>
+<section class="contato">
+  <a class="btn btn-whatsapp" href="<%= linkWhatsapp(config.whatsapp_contato, 'Oi! Vi a ' + config.nome_campanha + ' e quero ajudar.') %>" target="_blank" rel="noopener">Falar com a organização no WhatsApp</a>
+</section>
+<% } %>
+
+<%- include('../partials/foot') %>

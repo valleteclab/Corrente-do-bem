@@ -1,0 +1,17 @@
+<%- include('../partials/head') %>
+<section class="form-estreito">
+  <h1>Entrar</h1>
+  <% if (erro) { %><div class="aviso aviso-erro"><%= erro %></div><% } %>
+  <form method="post" action="/entrar" class="form">
+    <input type="hidden" name="voltar" value="<%= voltar %>">
+    <label>E-mail
+      <input type="email" name="email" required maxlength="160" value="<%= email %>" autocomplete="email">
+    </label>
+    <label>Senha
+      <input type="password" name="senha" required autocomplete="current-password">
+    </label>
+    <button class="btn btn-grande">Entrar</button>
+    <p class="mini muted">Ainda não tem conta? <a href="/cadastrar">Criar conta</a></p>
+  </form>
+</section>
+<%- include('../partials/foot') %>

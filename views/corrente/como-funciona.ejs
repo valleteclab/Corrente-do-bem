@@ -1,0 +1,27 @@
+<%- include('../partials/head') %>
+
+<h1>Como funciona a corrente 🔗💛</h1>
+<p class="lead">Quando uma campanha viraliza, a pessoa recebe dez dentaduras e vinte cestas básicas. A ideia da <%= config.nome_campanha %> é simples: nada se perde. O que chega a mais segue para quem ainda precisa.</p>
+
+<section class="passos">
+  <div class="passo"><span class="num">1</span><h3>Alguém cria uma campanha</h3><p>Um membro com selo cria a campanha para uma pessoa ou família, conta a história e lista o que falta. A campanha tem link próprio para compartilhar.</p></div>
+  <div class="passo"><span class="num">2</span><h3>As pessoas doam</h3><p>Qualquer um, membro ou não, escolhe um item da campanha, um <a href="/corrente/pedidos">pedido individual</a>, ou oferece o que tem. Deixa um contato para combinar a entrega.</p></div>
+  <div class="passo"><span class="num">3</span><h3>Quem cuida marca o que chegou</h3><p>O responsável pela campanha marca cada item como recebido. A partir daí, o site avisa quem tentar doar aquele item de novo.</p></div>
+  <div class="passo"><span class="num">4</span><h3>O excedente é repassado</h3><p>Ofertas para itens já recebidos ficam disponíveis. A moderação, com ajuda da IA, encaminha cada uma para o pedido que mais combina (mesmo item, cidade próxima, urgência).</p></div>
+</section>
+
+<section class="numeros">
+  <div class="numero"><strong><%= stats.campanhas_ativas %></strong><span>campanhas ativas</span></div>
+  <div class="numero"><strong><%= stats.ofertas_total %></strong><span>ofertas de ajuda</span></div>
+  <div class="numero"><strong><%= stats.ofertas_repassadas %></strong><span>doações repassadas</span></div>
+  <div class="numero"><strong><%= stats.pedidos_atendidos %></strong><span>pedidos atendidos</span></div>
+</section>
+
+<section class="destaque">
+  <h2>Privacidade</h2>
+  <p>Contatos (WhatsApp, e-mail) nunca aparecem publicamente. Só quem cuida da campanha e a moderação veem, e usam apenas para colocar doador e quem recebe em contato.</p>
+</section>
+
+<p class="acoes"><a href="/corrente/ajudar" class="btn btn-grande">💛 Quero doar</a> <a href="/corrente/campanhas" class="btn btn-secundario">Ver campanhas</a></p>
+
+<%- include('../partials/foot') %>
