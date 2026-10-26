@@ -1,0 +1,117 @@
+<%- include('../partials/head') %>
+
+<p class="mini"><a href="/corrente/campanha/<%= campanha.id %>">← Ver página pública da campanha</a></p>
+<h1>Gerenciar: <%= campanha.titulo %> <% if (campanha.status === 'encerrada') { %><span class="badge badge-cancelada">encerrada</span><% } %></h1>
+
+<section class="form-caixa">
+  <h2>O que <%= campanha.beneficiario %> precisa</h2>
+  <p class="muted">Quando um item chegar, marque <strong>Recebido</strong>: as ofertas pendentes dele ficam disponíveis para repasse e quem tentar doar de novo é avisado.</p>
+  <form method="post" action="/corrente/campanha/<%= campanha.id %>/necessidades" class="form form-linha">
+    <label>Item
+      <input type="text" name="titulo" required maxlength="200" placeholder="Ex.: Cadeira de rodas, cesta básica, remédio X...">
+    </label>
+    <label>Tipo
+      <select name="categoria"><% for (const c of categorias) { %><option value="<%= c %>"><%= c %></option><% } %></select>
+    </label>
+    <label>Detalhes (opcional)
+      <input type="text" name="descricao" maxlength="1000" placeholder="Tamanho, quantidade, observações...">
+    </label>
+    <button class="btn">Adicionar</button>
+  </form>
+
+  <% if (itens.length === 0) { %>
+    <p class="vazio">Nenhum item ainda. Adicione o que está faltando.</p>
+  <% } else { %>
+  <ul class="lista-admin">
+    <% for (const n of itens) { %>
+      <li class="item-admin">
+        <div class="item-cab">
+          <span class="badge badge-<%= n.status %>"><%= rotulos.necessidade[n.status] %></span>
+          <strong><%= n.titulo %></strong>
+          <span class="tag"><%= n.categoria %></span>
+          <% if (n.ofertas_pendentes > 0) { %><span class="muted">💛 <%= n.ofertas_pendentes %> oferta(s) pendente(s)</span><% } %>
+        </div>
+        <% if (n.descricao) { %><p class="muted"><%= n.descricao %></p><% } %>
+        <div class="item-acoes">
+          <% if (n.status === 'aberta') { %>
+            <form method="post" action="/corrente/campanha/<%= campanha.id %>/necessidades/<%= n.id %>/recebida" class="inline"><button class="btn btn-pequeno btn-ok">✓ Recebido</button></form>
+          <% } else { %>
+            <form method="post" action="/corrente/campanha/<%= campanha.id %>/necessidades/<%= n.id %>/reabrir" class="inline"><button class="btn btn-pequeno btn-secundario">Ainda precisa (reabrir)</button></form>
+          <% } %>
+          <form method="post" action="/corrente/campanha/<%= campanha.id %>/necessidades/<%= n.id %>/remover" class="inline" onsubmit="return confirm('Remover este item?')"><button class="btn btn-pequeno btn-perigo">Remover</button></form>
+        </div>
+      </li>
+    <% } %>
+  </ul>
+  <% } %>
+</section>
+
+<section>
+  <h2>Ofertas de doação para esta campanha</h2>
+  <% if (ofertas.length === 0) { %>
+    <p class="vazio">Nenhuma oferta ainda. Compartilhe o link da campanha!</p>
+  <% } else { %>
+  <ul class="lista-admin">
+    <% for (const o of ofertas) { %>
+      <li class="item-admin status-<%= o.status %>">
+        <div class="item-cab">
+          <span class="badge badge-<%= o.status %>"><%= rotulos.oferta[o.status] %></span>
+          <strong><%= o.item %></strong>
+          <span class="muted">para "<%= o.necessidade_titulo %>" · <%= formatarData(o.criado_em) %></span>
+        </div>
+        <p><strong><%= o.nome %></strong><%= o.cidade ? ' · ' + o.cidade : '' %> ·
+          <% const wa = linkWhatsapp(o.contato); %><% if (wa) { %><a href="<%= wa %>" target="_blank" rel="noopener"><%= o.contato %> (WhatsApp)</a><% } else { %><%= o.contato %><% } %>
+        </p>
+        <% if (o.descricao) { %><p class="muted"><%= o.descricao %></p><% } %>
+        <% if (o.status === 'disponivel') { %><p class="aviso aviso-info aviso-fino">Item já recebido. Esta doação está disponível para repasse: a moderação encaminha para outro pedido.</p><% } %>
+        <div class="item-acoes">
+          <% if (['nova','disponivel'].includes(o.status)) { %>
+            <form method="post" action="/corrente/campanha/<%= campanha.id %>/ofertas/<%= o.id %>/status" class="inline"><input type="hidden" name="status" value="aceita"><button class="btn btn-pequeno">Aceitar (vou receber)</button></form>
+          <% } %>
+          <% if (o.status === 'aceita') { %>
+            <form method="post" action="/corrente/campanha/<%= campanha.id %>/ofertas/<%= o.id %>/status" class="inline"><input type="hidden" name="status" value="concluida"><button class="btn btn-pequeno btn-ok">✓ Entregue</button></form>
+          <% } %>
+          <% if (['nova','aceita'].includes(o.status)) { %>
+            <form method="post" action="/corrente/campanha/<%= campanha.id %>/ofertas/<%= o.id %>/status" class="inline"><input type="hidden" name="status" value="disponivel"><button class="btn btn-pequeno btn-secundario">Não precisamos, liberar para repasse</button></form>
+            <form method="post" action="/corrente/campanha/<%= campanha.id %>/ofertas/<%= o.id %>/status" class="inline"><input type="hidden" name="status" value="cancelada"><button class="btn btn-pequeno btn-perigo">Cancelar</button></form>
+          <% } %>
+        </div>
+      </li>
+    <% } %>
+  </ul>
+  <% } %>
+</section>
+
+<section class="form-caixa">
+  <h2>Dados da campanha</h2>
+  <div class="duas-colunas">
+    <form method="post" action="/corrente/campanha/<%= campanha.id %>/editar" class="form coluna-principal">
+      <label>Título<input type="text" name="titulo" required maxlength="120" value="<%= valores.titulo %>"></label>
+      <label>Quem está sendo ajudado<input type="text" name="beneficiario" required maxlength="120" value="<%= valores.beneficiario %>"></label>
+      <label>História<textarea name="historia" rows="5" maxlength="4000"><%= valores.historia %></textarea></label>
+      <div class="linha-2 linha-2-igual">
+        <label>Cidade<input type="text" name="cidade" maxlength="120" value="<%= valores.cidade %>"></label>
+        <label>WhatsApp<input type="text" name="whatsapp" maxlength="40" value="<%= valores.whatsapp %>"></label>
+      </div>
+      <label>Link de vídeo<input type="url" name="link_video" maxlength="500" value="<%= valores.link_video %>"></label>
+      <button class="btn">Salvar</button>
+    </form>
+    <aside class="coluna-lateral">
+      <div class="caixa caixa-centro">
+        <% if (campanha.foto) { %><img class="campanha-foto-grande" src="<%= urlFoto(campanha.foto) %>" alt=""><% } %>
+        <form method="post" action="/corrente/campanha/<%= campanha.id %>/foto" enctype="multipart/form-data" class="form form-foto">
+          <label class="mini">Foto da campanha<input type="file" name="foto" accept="image/jpeg,image/png,image/webp" required></label>
+          <button class="btn btn-pequeno">Enviar foto</button>
+        </form>
+      </div>
+      <div class="caixa">
+        <form method="post" action="/corrente/campanha/<%= campanha.id %>/status">
+          <input type="hidden" name="status" value="<%= campanha.status === 'ativa' ? 'encerrada' : 'ativa' %>">
+          <button class="btn btn-pequeno <%= campanha.status === 'ativa' ? 'btn-perigo' : 'btn-ok' %>"><%= campanha.status === 'ativa' ? 'Encerrar campanha' : 'Reabrir campanha' %></button>
+        </form>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<%- include('../partials/foot') %>

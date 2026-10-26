@@ -455,6 +455,7 @@ function criarRepositorioRede(db) {
         posts: n('SELECT COUNT(*) n FROM posts WHERE usuario_id = ? AND removido = 0', usuarioId),
         vagas: n('SELECT COUNT(*) n FROM vagas WHERE empresa_id = ?', usuarioId),
         candidaturas: n('SELECT COUNT(*) n FROM candidaturas WHERE usuario_id = ?', usuarioId),
+        doacoes: n("SELECT COUNT(*) n FROM pontos WHERE usuario_id = ? AND acao = 'doou'", usuarioId),
       };
     },
     ranking({ tipo, cidade, limite = 20 } = {}) {

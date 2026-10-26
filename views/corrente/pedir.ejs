@@ -1,48 +1,39 @@
 <%- include('../partials/head') %>
 
 <h1>Preciso de ajuda</h1>
-<p class="lead">Muita gente quer ajudar <%= config.nome_beneficiaria %>, e parte do que ela já recebeu pode chegar até você. Conta o que você precisa.</p>
+<p class="lead">Conta o que você precisa. Doações que sobram nas campanhas e ofertas livres são encaminhadas para os pedidos. Não precisa ser membro.</p>
 
 <% if (erros.length) { %>
-  <div class="aviso aviso-erro">
-    <ul><% for (const e of erros) { %><li><%= e %></li><% } %></ul>
-  </div>
+  <div class="aviso aviso-erro"><ul><% for (const e of erros) { %><li><%= e %></li><% } %></ul></div>
 <% } %>
 
 <form method="post" action="/corrente/pedir" class="form">
   <input type="text" name="site" class="hp" tabindex="-1" autocomplete="off">
-
   <label>Seu nome
     <input type="text" name="nome" required maxlength="120" value="<%= valores.nome || '' %>">
     <small>Na lista pública aparece só o seu primeiro nome.</small>
   </label>
-
   <label>WhatsApp ou e-mail para contato
     <input type="text" name="contato" required maxlength="120" value="<%= valores.contato || '' %>" placeholder="(11) 99999-9999">
-    <small>Fica visível só para a organização da campanha.</small>
+    <small>Fica visível só para a organização.</small>
   </label>
-
   <label>Sua cidade
     <input type="text" name="cidade" maxlength="120" value="<%= valores.cidade || '' %>">
   </label>
-
   <label>O que você precisa?
     <input type="text" name="item" required maxlength="200" value="<%= valores.item || '' %>" placeholder="Ex.: cadeira de rodas, cesta básica, remédio para pressão...">
   </label>
-
   <label>Tipo
     <select name="categoria">
-      <% for (const c of categorias) { %>
-        <option value="<%= c %>" <%= valores.categoria === c ? 'selected' : '' %>><%= c %></option>
-      <% } %>
+      <% for (const c of categorias) { %><option value="<%= c %>" <%= valores.categoria === c ? 'selected' : '' %>><%= c %></option><% } %>
     </select>
   </label>
-
   <label>Conta um pouco da sua situação (opcional)
     <textarea name="descricao" rows="4" maxlength="1000"><%= valores.descricao || '' %></textarea>
   </label>
-
   <button type="submit" class="btn btn-grande">Registrar meu pedido</button>
 </form>
+
+<p class="mini muted">Quer ajudar uma pessoa ou família específica de forma organizada? Membros com selo podem <a href="/corrente/campanhas/nova">criar uma campanha</a>.</p>
 
 <%- include('../partials/foot') %>

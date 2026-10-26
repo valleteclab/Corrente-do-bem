@@ -228,9 +228,7 @@ module.exports = function criarRotasAdmin(db, { senha, ia, uploads, gamificacao 
       cadastro_aberto: req.body.cadastro_aberto === '1' ? '1' : '0',
       nome_selo: texto(req.body.nome_selo, 40) || 'Patriota',
       nome_campanha: texto(req.body.nome_campanha, 120) || 'Corrente do Bem',
-      nome_beneficiaria: texto(req.body.nome_beneficiaria, 120) || 'Tia',
-      historia: texto(req.body.historia, 4000),
-      link_video: texto(req.body.link_video, 500),
+      descricao_corrente: texto(req.body.descricao_corrente, 2000),
       whatsapp_contato: texto(req.body.whatsapp_contato, 40).replace(/\D/g, ''),
       cidade: texto(req.body.cidade, 120),
     });
@@ -278,19 +276,19 @@ module.exports = function criarRotasAdmin(db, { senha, ia, uploads, gamificacao 
 
   // ----- necessidades -----
   router.get('/corrente/necessidades', (req, res) => {
-    res.render('admin/corrente/necessidades', { titulo: 'O que ela precisa', necessidades: db.necessidades.listar(), editando: null });
+    res.render('admin/corrente/necessidades', { titulo: 'Itens das campanhas', necessidades: db.necessidades.listar(), campanhas: db.campanhas.listar({ status: 'ativa' }), editando: null });
   });
 
   router.get('/corrente/necessidades/:id/editar', (req, res) => {
     const n = db.necessidades.buscar(idDe(req.params.id));
     if (!n) return res.redirect('/admin/corrente/necessidades');
-    res.render('admin/corrente/necessidades', { titulo: 'Editar necessidade', necessidades: db.necessidades.listar(), editando: n });
+    res.render('admin/corrente/necessidades', { titulo: 'Editar item', necessidades: db.necessidades.listar(), campanhas: db.campanhas.listar({ status: 'ativa' }), editando: n });
   });
 
   router.post('/corrente/necessidades', (req, res) => {
     const titulo = texto(req.body.titulo, 200);
     if (!titulo) { res.locals.setFlash('erro', 'O título é obrigatório.'); return res.redirect('/admin/corrente/necessidades'); }
-    db.necessidades.criar({ titulo, descricao: texto(req.body.descricao, 1000), categoria: categoriaValida(req.body.categoria) });
+    db.necessidades.criar({ campanha_id: idDe(req.body.campanha_id), titulo, descricao: texto(req.body.descricao, 1000), categoria: categoriaValida(req.body.categoria) });
     res.locals.setFlash('ok', 'Necessidade adicionada.');
     res.redirect('/admin/corrente/necessidades');
   });
@@ -343,8 +341,11 @@ module.exports = function criarRotasAdmin(db, { senha, ia, uploads, gamificacao 
     const id = idDe(req.params.id);
     const status = req.body.status;
     if (id && STATUS_OFERTA.includes(status)) {
-      if (status === 'concluida') db.ofertas.concluir(id);
-      else db.ofertas.mudarStatus(id, status, req.body.observacao !== undefined ? texto(req.body.observacao, 1000) : undefined);
+      if (status === 'concluida') {
+        const o = db.ofertas.buscar(id);
+        db.ofertas.concluir(id);
+        if (o && o.usuario_id) gamificacao.premiar(o.usuario_id, 'doou', String(id));
+      } else db.ofertas.mudarStatus(id, status, req.body.observacao !== undefined ? texto(req.body.observacao, 1000) : undefined);
       res.locals.setFlash('ok', 'Oferta atualizada.');
     }
     res.redirect(req.body.voltar || '/admin/corrente/ofertas');

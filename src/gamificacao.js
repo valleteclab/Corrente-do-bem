@@ -13,6 +13,8 @@ const ACOES = {
   post: { pontos: 5, rotulo: 'Publicou no feed', limiteDia: 3 },
   comentou: { pontos: 2, rotulo: 'Comentou uma publicação', limiteDia: 10 },
   curriculo: { pontos: 15, rotulo: 'Cadastrou o currículo' },
+  doou: { pontos: 20, rotulo: 'Doação entregue pela Corrente do Bem' },
+  campanha: { pontos: 10, rotulo: 'Criou uma campanha de ajuda' },
   avaliou: { pontos: 10, rotulo: 'Avaliou uma empresa' },
   foi_avaliado: { pontos: 10, rotulo: 'Recebeu uma avaliação' },
   vaga: { pontos: 15, rotulo: 'Publicou uma vaga' },
@@ -38,6 +40,7 @@ const CONQUISTAS = [
   { chave: 'bem_avaliado', nome: 'Bem Avaliado', icone: '🏅', descricao: 'Recebeu 10 avaliações.', condicao: (s) => s.avaliacoes_recebidas >= 10 },
   { chave: 'empregador', nome: 'Empregador', icone: '💼', descricao: 'Publicou 3 vagas.', condicao: (s) => s.vagas >= 3 },
   { chave: 'voz_ativa', nome: 'Voz Ativa', icone: '📣', descricao: 'Fez 20 publicações.', condicao: (s) => s.posts >= 20 },
+  { chave: 'mao_amiga', nome: 'Mão Amiga', icone: '💛', descricao: 'Teve 3 doações entregues pela Corrente do Bem.', condicao: (s) => s.doacoes >= 3 },
 ];
 
 function nivelDe(pontos) {

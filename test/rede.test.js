@@ -358,3 +358,72 @@ test('verificador só acessa a fila do selo e fica registrado como quem decidiu'
   assert.match(membros, /verificador · 1 selo\(s\) decididos/);
   db.usuarios.mudarPapel(brunoDb.id, 'moderador');
 });
+
+test('Corrente do Bem: membro cria campanha, recebe oferta, marca recebido e a oferta vai para repasse', async () => {
+  const ana = await entrar('ana@teste.com');
+  const anaDb = db.usuarios.buscarPorEmail('ana@teste.com');
+  // Sem selo não cria campanha.
+  const { cookie: semSelo } = await cadastrar({ nome: 'Sem Selo', email: 'semselo@teste.com' });
+  let r = await get('/corrente/campanhas/nova', semSelo);
+  assert.equal(r.headers.get('location'), '/verificacao');
+
+  r = await post('/corrente/campanhas/nova', { titulo: 'Ajuda para a Dona Lúcia', beneficiario: 'Dona Lúcia', historia: 'Perdeu tudo na enchente e precisa recomeçar com os três netos.', cidade: 'Osasco', whatsapp: '11999990001' }, ana);
+  assert.equal(r.status, 302);
+  const [camp] = db.campanhas.listar({ dono_id: anaDb.id });
+  assert.equal(camp.titulo, 'Ajuda para a Dona Lúcia');
+  assert.equal(r.headers.get('location'), `/corrente/campanha/${camp.id}/gerenciar`);
+  const pontos = db.pontos.total(anaDb.id);
+
+  // Dona adiciona itens; outro membro não consegue gerenciar.
+  r = await post(`/corrente/campanha/${camp.id}/necessidades`, { titulo: 'Geladeira', categoria: 'Móveis e eletrodomésticos' }, ana);
+  r = await post(`/corrente/campanha/${camp.id}/necessidades`, { titulo: 'Cesta básica', categoria: 'Alimentação' }, ana);
+  const [geladeira, cesta] = db.necessidades.listar({ campanha_id: camp.id }).sort((a, b) => a.id - b.id);
+  const bruno = await entrar('bruno@teste.com');
+  db.usuarios.mudarPapel(db.usuarios.buscarPorEmail('bruno@teste.com').id, 'membro');
+  r = await get(`/corrente/campanha/${camp.id}/gerenciar`, bruno);
+  assert.equal(r.status, 302, 'outro membro não gerencia');
+  r = await post(`/corrente/campanha/${camp.id}/necessidades/${geladeira.id}/recebida`, {}, bruno);
+  assert.equal(db.necessidades.buscar(geladeira.id).status, 'aberta');
+
+  // Página pública mostra a campanha; hub lista.
+  let html = await (await get(`/corrente/campanha/${camp.id}`)).text();
+  assert.match(html, /Dona Lúcia/);
+  assert.match(html, /Geladeira/);
+  html = await (await get('/corrente')).text();
+  assert.match(html, /Ajuda para a Dona Lúcia/);
+
+  // Bruno (logado) doa a geladeira: oferta fica ligada à conta dele.
+  r = await post('/corrente/ajudar', { nome: 'Bruno', contato: '11988880000', item: 'Geladeira duplex', categoria: 'Móveis e eletrodomésticos', necessidade_id: geladeira.id, autoriza_repasse: '1' }, bruno);
+  assert.equal(r.status, 302);
+  const [oferta] = db.ofertas.listar({ campanha_id: camp.id });
+  assert.equal(oferta.usuario_id, db.usuarios.buscarPorEmail('bruno@teste.com').id);
+  assert.equal(oferta.status, 'nova');
+
+  // Dona vê a oferta com contato, aceita e marca entregue: Bruno ganha 20 pontos.
+  html = await (await get(`/corrente/campanha/${camp.id}/gerenciar`, ana)).text();
+  assert.match(html, /Geladeira duplex/);
+  assert.match(html, /11988880000/);
+  const brunoId = oferta.usuario_id;
+  const antesBruno = db.pontos.total(brunoId);
+  await post(`/corrente/campanha/${camp.id}/ofertas/${oferta.id}/status`, { status: 'aceita' }, ana);
+  await post(`/corrente/campanha/${camp.id}/ofertas/${oferta.id}/status`, { status: 'concluida' }, ana);
+  assert.equal(db.ofertas.buscar(oferta.id).status, 'concluida');
+  assert.equal(db.pontos.total(brunoId), antesBruno + 20);
+
+  // Segunda oferta para a cesta; dona marca cesta como recebida: oferta vira disponível para repasse.
+  await post('/corrente/ajudar', { nome: 'Carla', contato: 'carla@x.com', item: 'Cesta básica', categoria: 'Alimentação', necessidade_id: cesta.id, autoriza_repasse: '1' });
+  await post(`/corrente/campanha/${camp.id}/necessidades/${cesta.id}/recebida`, {}, ana);
+  const cestaOferta = db.ofertas.listar({ campanha_id: camp.id }).find((o) => o.item === 'Cesta básica');
+  assert.equal(cestaOferta.status, 'disponivel');
+  // Quem tenta doar o item recebido é avisado.
+  html = await (await get(`/corrente/ajudar?necessidade=${cesta.id}`)).text();
+  assert.match(html, /Dona Lúcia já recebeu "Cesta básica"/);
+
+  // Minha corrente e encerramento.
+  html = await (await get('/corrente/minha', ana)).text();
+  assert.match(html, /Ajuda para a Dona Lúcia/);
+  await post(`/corrente/campanha/${camp.id}/status`, { status: 'encerrada' }, ana);
+  assert.equal(db.campanhas.buscar(camp.id).status, 'encerrada');
+  assert.equal(db.pontos.total(anaDb.id), pontos, 'criar campanha pontuou uma vez (10) e nada mais');
+  db.usuarios.mudarPapel(db.usuarios.buscarPorEmail('bruno@teste.com').id, 'moderador');
+});

@@ -46,7 +46,7 @@ test('página da Corrente do Bem carrega', async () => {
   assert.equal(r.status, 200);
   const html = await r.text();
   assert.match(html, /Corrente do Bem/);
-  assert.match(html, /Quero ajudar/);
+  assert.match(html, /Quero doar/);
 });
 
 test('painel exige login', async () => {

@@ -65,7 +65,7 @@ function criarApp(opcoes = {}) {
   app.get('/health', (req, res) => res.json({ ok: true }));
   app.use('/', criarRotasAuth(db, auth, gamificacao));
   app.use('/', criarRotasRede(db, { auth, uploads, ia, gamificacao }));
-  app.use('/corrente', criarRotasCorrente(db, ia));
+  app.use('/corrente', criarRotasCorrente(db, { ia, auth, uploads, gamificacao }));
   app.use('/admin', criarRotasAdmin(db, { senha: adminSenha, segredo, ia, uploads, gamificacao }));
 
   app.use((req, res) => {

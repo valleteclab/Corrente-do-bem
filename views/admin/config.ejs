@@ -22,17 +22,11 @@
   <label class="radio"><input type="checkbox" name="cadastro_aberto" value="1" <%= config.cadastro_aberto === '1' ? 'checked' : '' %>> Cadastro aberto (desmarque para aceitar só por convite)</label>
 
   <h2><%= config.nome_campanha %></h2>
-  <label>Nome da campanha
+  <label>Nome do módulo de ajuda
     <input type="text" name="nome_campanha" required maxlength="120" value="<%= config.nome_campanha %>">
   </label>
-  <label>Como chamar a beneficiária
-    <input type="text" name="nome_beneficiaria" required maxlength="120" value="<%= config.nome_beneficiaria %>">
-  </label>
-  <label>História
-    <textarea name="historia" rows="5" maxlength="4000"><%= config.historia %></textarea>
-  </label>
-  <label>Link do vídeo (opcional)
-    <input type="url" name="link_video" maxlength="500" value="<%= config.link_video %>">
+  <label>Descrição (página inicial da corrente)
+    <textarea name="descricao_corrente" rows="3" maxlength="2000"><%= config.descricao_corrente %></textarea>
   </label>
   <label>WhatsApp da organização (só números com DDD)
     <input type="text" name="whatsapp_contato" maxlength="40" value="<%= config.whatsapp_contato %>">

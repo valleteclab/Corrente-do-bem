@@ -30,8 +30,11 @@ O nome, o slogan e os textos são configuráveis no painel. As cores seguem a ba
   embeds (o conteúdo continua hospedado lá; não baixamos fotos de terceiros).
 - **Currículo e Talentos**: pessoas preenchem profissão, resumo e PDF opcional, marcam "procurando trabalho" e aparecem
   na página Talentos para as empresas. PDF visível só para membros com selo. Qualquer membro com selo publica vagas.
-- **Corrente do Bem** (`/corrente`): o módulo de doações original. Lista do que a beneficiária precisa, ofertas,
-  pedidos de outras pessoas e repasse das doações que sobram, com sugestões por IA.
+- **Corrente do Bem** (`/corrente`): o módulo de ajuda da rede. Membros com selo criam **campanhas** para alguém que
+  precisa (história, foto, lista do que falta, link para compartilhar) e cuidam delas: marcam o que chegou, aceitam
+  e confirmam entregas. Qualquer pessoa, membro ou não, registra um **pedido** ou oferece uma **doação** (para um item
+  de campanha, para um pedido, ou livre). O que uma campanha já recebeu é **repassado** para o próximo da fila, com
+  sugestão da IA. Doação entregue dá 20 pontos a quem doou; criar campanha dá 10.
 
 **Moderação (`/admin`)**
 
@@ -40,8 +43,9 @@ O nome, o slogan e os textos são configuráveis no painel. As cores seguem a ba
 - **Fila de verificação**: vê as imagens, a recomendação da IA, aprova ou recusa com motivo.
 - **Membros**: busca, verificar manualmente, tirar selo, dar convites, tornar moderador, suspender.
 - **Denúncias**: remover publicação, suspender conta, resolver.
-- **Corrente do Bem**: necessidades, ofertas (com repasse por IA) e pedidos.
-- **Configurações**: nome da rede, slogan, descrição, cadastro aberto ou só por convite, dados da campanha.
+- **Corrente do Bem**: itens de todas as campanhas, ofertas (com repasse por IA) e pedidos. A moderação também
+  pode gerenciar qualquer campanha.
+- **Configurações**: nome da rede, slogan, descrição, nome do selo, cadastro aberto ou só por convite, textos da Corrente.
 
 **IA (Claude API)**, ativa com `ANTHROPIC_API_KEY`:
 

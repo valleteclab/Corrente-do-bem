@@ -14,7 +14,7 @@
       </p>
       <% if (o.descricao) { %><p class="muted"><%= o.descricao %></p><% } %>
       <% if (o.necessidade_titulo) { %>
-        <p>Para o item: <strong><%= o.necessidade_titulo %></strong>
+        <p>Para o item: <strong><%= o.necessidade_titulo %></strong><% if (o.campanha_titulo) { %> · <a href="/corrente/campanha/<%= o.campanha_id %>">📣 <%= o.campanha_titulo %></a><% } %>
           <% if (o.necessidade_status === 'recebida') { %><span class="badge badge-recebida">já recebeu</span><% } %>
         </p>
       <% } %>

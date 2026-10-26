@@ -32,7 +32,7 @@
     <a href="/admin/corrente/ofertas?status=nova" class="numero"><strong><%= stats.ofertas_novas %></strong><span>ofertas novas</span></a>
     <a href="/admin/corrente/ofertas?status=disponivel" class="numero"><strong><%= stats.ofertas_disponiveis %></strong><span>doações para repassar</span></a>
     <a href="/admin/corrente/pedidos?status=aberto" class="numero"><strong><%= stats.pedidos_abertos %></strong><span>pedidos esperando</span></a>
-    <a href="/admin/corrente/necessidades" class="numero"><strong><%= stats.necessidades_abertas %></strong><span>itens que ela ainda precisa</span></a>
+    <a href="/admin/corrente/necessidades" class="numero"><strong><%= stats.necessidades_abertas %></strong><span>itens de campanha faltando</span></a>
   </div>
   <%- include('../partials/barra-ia', { pendentesIa, voltar: '/admin' }) %>
 </section>

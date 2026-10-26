@@ -1,0 +1,32 @@
+<%- include('../partials/head') %>
+
+<h1>Minha corrente</h1>
+
+<section>
+  <div class="titulo-acao"><h2>Campanhas que eu cuido</h2><% if (usuario.status_verificacao === 'verificado') { %><a href="/corrente/campanhas/nova" class="btn btn-pequeno">+ Criar campanha</a><% } %></div>
+  <% if (campanhas.length === 0) { %><p class="vazio">Nenhuma ainda.</p><% } else { %>
+    <ul class="lista-simples-cards">
+      <% for (const c of campanhas) { %><li><a href="/corrente/campanha/<%= c.id %>/gerenciar"><strong><%= c.titulo %></strong></a> · <%= c.status %> · <%= c.abertas %> faltando · ✅ <%= c.recebidas %> · 💛 <%= c.ofertas %> ofertas</li><% } %>
+    </ul>
+  <% } %>
+</section>
+
+<section>
+  <h2>Minhas doações</h2>
+  <% if (ofertas.length === 0) { %><p class="vazio">Nenhuma ainda. <a href="/corrente/ajudar">Quero doar</a>.</p><% } else { %>
+    <ul class="lista-simples-cards">
+      <% for (const o of ofertas) { %><li><strong><%= o.item %></strong> <span class="badge badge-<%= o.status %>"><%= rotulos.oferta[o.status] %></span> <%= o.campanha_beneficiario ? 'para ' + o.campanha_beneficiario : o.pedido_item ? 'para quem pediu ' + o.pedido_item : '' %> <span class="muted mini"><%= formatarData(o.criado_em) %></span></li><% } %>
+    </ul>
+  <% } %>
+</section>
+
+<section>
+  <h2>Meus pedidos</h2>
+  <% if (pedidos.length === 0) { %><p class="vazio">Nenhum. <a href="/corrente/pedir">Preciso de ajuda</a>.</p><% } else { %>
+    <ul class="lista-simples-cards">
+      <% for (const p of pedidos) { %><li><strong><%= p.item %></strong> <span class="badge badge-<%= p.status %>"><%= rotulos.pedido[p.status] %></span> <span class="muted mini"><%= formatarData(p.criado_em) %></span></li><% } %>
+    </ul>
+  <% } %>
+</section>
+
+<%- include('../partials/foot') %>

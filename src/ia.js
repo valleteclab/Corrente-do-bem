@@ -44,23 +44,24 @@ const ESQUEMA_RESPOSTA = {
   additionalProperties: false,
 };
 
-const SISTEMA = `Você ajuda a organizar uma campanha de doações chamada "Corrente do Bem".
-Uma pessoa (a beneficiária) viralizou e muita gente quer doar para ela. Ela tem uma lista de itens
-que ainda precisa e itens que já recebeu. Quando alguém oferece algo que ela já recebeu, a doação
-deve ser repassada para outra pessoa que registrou um pedido de ajuda.
+const SISTEMA = `Você ajuda a organizar a "Corrente do Bem", o módulo de ajuda mútua de uma rede comunitária.
+Membros criam campanhas para pessoas que precisam de ajuda, cada campanha com uma lista de itens que
+ainda faltam e itens que já foram recebidos. Além disso, outras pessoas registram pedidos individuais.
+Quando alguém oferece algo que uma campanha já recebeu, a doação deve ser repassada para o próximo
+da fila: um pedido individual ou outro item ainda aberto.
 
 Sua tarefa, dada uma oferta de doação:
-1. Dizer a qual item da lista da beneficiária a oferta corresponde (necessidade_id), considerando
-   sinônimos, variações regionais e descrições informais ("prótese dentária" = "dentadura",
-   "rancho" = "cesta básica", "remédio de pressão" = "Losartana"). Se não corresponder a nenhum, null.
-   Se a oferta já vier ligada a um item, mantenha esse item a menos que esteja claramente errado.
-2. Listar os pedidos de outras pessoas que essa doação atende, do melhor para o pior, com pontuação
-   de 0 a 100 e um motivo curto. Considere: o item é o mesmo ou serve para o mesmo fim; categoria;
+1. Dizer a qual item de campanha a oferta corresponde (necessidade_id), considerando sinônimos,
+   variações regionais e descrições informais ("prótese dentária" = "dentadura", "rancho" = "cesta
+   básica", "remédio de pressão" = "Losartana"). Prefira itens ainda abertos; se o único item
+   correspondente já foi recebido, aponte-o mesmo assim (isso libera o repasse). Se não corresponder
+   a nenhum, null. Se a oferta já vier ligada a um item, mantenha-o a menos que esteja claramente errado.
+2. Listar os pedidos individuais que essa doação atende, do melhor para o pior, com pontuação de 0 a
+   100 e um motivo curto. Considere: o item é o mesmo ou serve para o mesmo fim; categoria;
    proximidade de cidade (entrega mais fácil); urgência descrita no pedido. Só inclua pedidos com
    pontuação 40 ou mais. Dinheiro/Pix pode atender quase qualquer pedido, mas priorize pedidos
    onde dinheiro resolve (remédio, conta, transporte).
-   Liste sugestões mesmo quando o item ainda está aberto na lista da beneficiária: a organização
-   pode ter mais ofertas do que o necessário e vai precisar repassar o excedente.
+   Liste sugestões mesmo quando o item ainda está aberto: pode haver mais ofertas do que o necessário.
 3. Escrever um resumo curto, em português do Brasil, direto e caloroso, para quem organiza.
 
 Nunca invente IDs: use apenas os IDs fornecidos. Responda apenas com o JSON pedido.`;
@@ -68,7 +69,7 @@ Nunca invente IDs: use apenas os IDs fornecidos. Responda apenas com o JSON pedi
 function formatarNecessidades(necessidades) {
   if (!necessidades.length) return '(nenhum item cadastrado)';
   return necessidades
-    .map((n) => `- id ${n.id}: ${n.titulo} [${n.categoria}] — ${n.status === 'recebida' ? 'JÁ RECEBEU' : 'ainda precisa'}${n.descricao ? ` — ${n.descricao}` : ''}`)
+    .map((n) => `- id ${n.id}: ${n.titulo} [${n.categoria}]${n.campanha_beneficiario ? ` (campanha de ${n.campanha_beneficiario})` : ''} — ${n.status === 'recebida' ? 'JÁ RECEBEU' : 'ainda precisa'}${n.descricao ? ` — ${n.descricao}` : ''}`)
     .join('\n');
 }
 
@@ -158,7 +159,7 @@ function criarIa({ client, modelo = MODELO, logger = console } = {}) {
   async function analisarEAplicar(db, ofertaId) {
     const oferta = db.ofertas.buscar(ofertaId);
     if (!oferta) return null;
-    const necessidades = db.necessidades.listar();
+    const necessidades = db.necessidades.listar({ apenasAtivas: true });
     const pedidos = db.pedidos.listar({ status: 'aberto' }).filter((p) => p.id !== oferta.pedido_id);
 
     const analise = await analisarOferta(oferta, { necessidades, pedidos });

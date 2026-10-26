@@ -303,6 +303,13 @@ button.link { background: none; border: 0; color: var(--muted); cursor: pointer;
 .nivel-card small { color: var(--muted); }
 .linha-2-igual { grid-template-columns: 1fr 1fr; }
 
+/* corrente */
+.hero-corrente { background: linear-gradient(135deg, #fff8cc 0%, #fff 100%); border: 1px solid #f1e38a; }
+.campanha-cab { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.campanha-foto { width: 100%; max-height: 180px; object-fit: cover; border-radius: 8px; }
+.campanha-foto-grande { width: 220px; max-width: 100%; border-radius: var(--raio); object-fit: cover; }
+.card-campanha { flex-direction: column; }
+
 /* rodapé */
 .rodape { border-top: 4px solid var(--verde); padding: 20px 0; color: var(--muted); font-size: 0.9rem; text-align: center; background: var(--papel); }
 .rodape p { margin: 4px 0; }

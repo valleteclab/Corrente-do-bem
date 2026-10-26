@@ -1,0 +1,26 @@
+<%- include('../partials/head') %>
+
+<div class="titulo-acao">
+  <h1>Campanhas</h1>
+  <% if (usuario && usuario.status_verificacao === 'verificado') { %><a href="/corrente/campanhas/nova" class="btn">+ Criar campanha</a><% } %>
+</div>
+<p class="lead">Cada campanha é alguém que está precisando, com a lista do que falta. Escolha uma e doe um item.</p>
+
+<% if (ativas.length === 0) { %>
+  <p class="vazio">Nenhuma campanha ativa no momento.</p>
+<% } else { %>
+  <ul class="cards">
+    <% for (const c of ativas) { %><%- include('../partials/campanha-card', { c }) %><% } %>
+  </ul>
+<% } %>
+
+<% if (encerradas.length) { %>
+<section>
+  <h2>Encerradas 🙏</h2>
+  <ul class="lista-simples-cards">
+    <% for (const c of encerradas) { %><li><a href="/corrente/campanha/<%= c.id %>"><strong><%= c.titulo %></strong></a> · para <%= c.beneficiario %> · ✅ <%= c.recebidas %> itens recebidos</li><% } %>
+  </ul>
+</section>
+<% } %>
+
+<%- include('../partials/foot') %>

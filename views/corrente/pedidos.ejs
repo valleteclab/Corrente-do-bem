@@ -1,15 +1,13 @@
 <%- include('../partials/head') %>
 
-<h1>Quem mais precisa de ajuda</h1>
-<p class="lead">Doações que <%= config.nome_beneficiaria %> já recebeu podem chegar até essas pessoas. Você também pode doar direto para uma delas.</p>
+<h1>Quem precisa de ajuda</h1>
+<p class="lead">Pedidos individuais abertos. Você pode doar direto para uma pessoa. Doações que sobram nas campanhas também chegam aqui.</p>
 
 <form method="get" action="/corrente/pedidos" class="filtro">
   <label>Filtrar por tipo
     <select name="categoria" onchange="this.form.submit()">
       <option value="">Todos</option>
-      <% for (const c of categorias) { %>
-        <option value="<%= c %>" <%= categoriaFiltro === c ? 'selected' : '' %>><%= c %></option>
-      <% } %>
+      <% for (const c of categorias) { %><option value="<%= c %>" <%= categoriaFiltro === c ? 'selected' : '' %>><%= c %></option><% } %>
     </select>
   </label>
   <noscript><button class="btn btn-pequeno">Filtrar</button></noscript>
@@ -31,6 +29,6 @@
   </ul>
 <% } %>
 
-<p class="acoes"><a href="/corrente/pedir" class="btn btn-secundario">Eu também preciso de ajuda</a></p>
+<p class="acoes"><a href="/corrente/pedir" class="btn btn-secundario">Eu também preciso de ajuda</a> <a href="/corrente/campanhas" class="btn btn-secundario">Ver campanhas</a></p>
 
 <%- include('../partials/foot') %>
