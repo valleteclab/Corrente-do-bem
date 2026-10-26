@@ -10,11 +10,17 @@ O nome, o slogan e os textos são configuráveis no painel. As cores seguem a ba
 
 **Rede (público e membros)**
 
-- **Conta** de pessoa ou empresa, com login por e-mail e senha. Consentimento LGPD no cadastro.
-- **Verificação**: o membro envia selfie segurando o documento, foto do documento e Instagram. As imagens ficam em
-  área privada (só a moderação vê) e são **apagadas automaticamente** quando a verificação é aprovada ou recusada.
-  Quem entra por convite tem prioridade e não precisa informar Instagram.
-- **Convites**: membro verificado ganha 5 convites. O convidado fica ligado a quem convidou (responsabilidade).
+- **Conta** de pessoa ou empresa, com login por e-mail e senha. Consentimento LGPD destacado no cadastro.
+- **Selo** (nome configurável, padrão "Patriota"), dois caminhos:
+  - **Convite** de quem já tem o selo: o convidado entra **com o selo na hora**, sem análise. Quem convidou ganha pontos
+    e responde pela indicação.
+  - **Análise**: o membro informa redes sociais (Instagram, Facebook, TikTok, X, YouTube) e/ou envia até 3 fotos.
+    A moderação olha e aprova. As fotos ficam em área privada e são **apagadas automaticamente** após a decisão.
+- **Convites**: membro com selo ganha 5 convites. O convidado fica ligado a quem convidou.
+- **Gamificação para puxar o comércio entre membros**: depois de comprar ou contratar, o cliente registra o negócio no
+  perfil da empresa; a empresa confirma e **os dois ganham 25 pontos**. Pontos também por selo, convites aceitos, perfil
+  completo, avaliações, vagas, candidaturas e posts (limite diário). Níveis (Recruta → Patriota → Guardião →
+  Bandeirante → Lenda), conquistas (Primeiro Elo, Comerciante, Anfitrião...) e **ranking** de empresas e membros por cidade.
 - **Diretório** de empresas, profissionais e membros verificados: busca por nome, cidade, tipo e categoria.
   Avaliações (1 a 5 estrelas) só por membros verificados. WhatsApp visível só para membros verificados.
 - **Vagas**: empresas verificadas publicam; membros verificados se candidatam com um clique. A empresa vê o perfil
@@ -34,9 +40,9 @@ O nome, o slogan e os textos são configuráveis no painel. As cores seguem a ba
 
 **IA (Claude API)**, ativa com `ANTHROPIC_API_KEY`:
 
-- **Triagem de verificação**: checa se o documento está legível, se a selfie mostra um rosto real com documento,
-  se parece a mesma pessoa e se o nome confere. Recomenda aprovar / revisar / rejeitar. **A decisão é sempre da
-  moderação.** A IA não avalia aparência, opinião ou política de ninguém, e não transcreve números do documento.
+- **Triagem do selo**: olha as fotos e os dados informados e diz se parecem de um perfil real e consistente
+  (sem acesso à internet, não abre os perfis). Recomenda aprovar / revisar / rejeitar. **A decisão é sempre da
+  moderação.** A IA não avalia aparência, religião ou opinião política de ninguém.
 - **Repasse de doações** (Corrente do Bem): liga a oferta ao item certo e sugere para quem repassar.
 
 ## Rodando
@@ -76,9 +82,10 @@ Para um projeto novo:
 
 ## Privacidade e lei (resumo do que foi considerado)
 
-- Opinião política é dado sensível na LGPD. O sistema **não pede nem guarda** ideologia declarada. A afinidade
-  vem do convite e da comunidade. O consentimento no cadastro cobre os dados coletados.
-- Fotos de documento são usadas só para confirmar identidade e são apagadas após a decisão.
+- Opinião política é dado sensível na LGPD. Como esta é uma rede de afinidade, a própria participação pode revelar
+  convicções; por isso o cadastro pede **consentimento específico e destacado** (art. 11, I) e os termos explicam
+  isso. O sistema não tem campo de ideologia declarada: o selo é dado por convite ou pela moderação.
+- Fotos enviadas para o selo são apagadas após a decisão. Só a moderação vê.
 - Vagas são abertas a todos os membros verificados; a empresa decide quem contrata. Os termos lembram as empresas
   da legislação (Constituição art. 3º IV, Lei 9.029/95, Convenção 111 da OIT).
 - `views/rede/termos.ejs` tem uma versão inicial dos termos. Vale revisão jurídica antes do lançamento.
@@ -91,6 +98,7 @@ src/db.js               SQLite: config + Corrente do Bem
 src/db-rede.js          SQLite: usuários, convites, verificações, posts, denúncias, vagas, avaliações
 src/auth.js             sessão por cookie e guardas (login, verificado, empresa)
 src/upload.js           uploads (fotos públicas / verificação privada)
+src/gamificacao.js      pontos por ação, níveis, conquistas
 src/ia.js               Claude API: triagem de verificação e repasse de doações
 src/routes/auth.js      entrar, cadastrar, sair
 src/routes/rede.js      feed, diretório, perfil, verificação, convites, vagas

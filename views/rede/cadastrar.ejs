@@ -3,7 +3,7 @@
   <h1>Criar conta</h1>
 
   <% if (convite) { %>
-    <div class="aviso aviso-ok">🎟️ Você foi convidado(a) por <strong><%= convite.convidante_nome %></strong>. Sua verificação terá prioridade.</div>
+    <div class="aviso aviso-ok">🎟️ Você foi convidado(a) por <strong><%= convite.convidante_nome %></strong>. Ao criar a conta você já recebe o selo <%= config.nome_selo %>.</div>
   <% } %>
   <% if (erros.length) { %>
     <div class="aviso aviso-erro"><ul><% for (const e of erros) { %><li><%= e %></li><% } %></ul></div>
@@ -45,7 +45,7 @@
     <label>WhatsApp (opcional, só membros verificados veem)
       <input type="text" name="whatsapp" maxlength="40" value="<%= valores.whatsapp || '' %>" placeholder="(11) 99999-9999">
     </label>
-    <label>Instagram (opcional agora, pedido na verificação)
+    <label>Instagram (opcional)
       <input type="text" name="instagram" maxlength="60" value="<%= valores.instagram || '' %>" placeholder="@seuperfil">
     </label>
     <% if (!valores.convite) { %>
@@ -56,7 +56,7 @@
 
     <label class="radio consent">
       <input type="checkbox" name="consentimento" value="1" required>
-      <span>Li e aceito os <a href="/termos" target="_blank">termos de uso e a política de privacidade</a>, inclusive o uso das minhas fotos de documento somente para verificação de identidade.</span>
+      <span>Li e aceito os <a href="/termos" target="_blank">termos de uso e a política de privacidade</a>. Entendo que esta é uma rede de afinidade de valores e que minha participação pode indicar minhas convicções a outros membros.</span>
     </label>
 
     <button class="btn btn-grande">Criar conta</button>

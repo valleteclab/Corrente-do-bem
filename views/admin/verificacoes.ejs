@@ -1,11 +1,11 @@
 <%- include('../partials/head') %>
 
-<h1>Fila de verificação</h1>
+<h1>Fila do selo <%= config.nome_selo %></h1>
 
 <nav class="abas">
   <a href="/admin/verificacoes?status=em_analise" class="<%= statusFiltro === 'em_analise' ? 'ativo' : '' %>">Em análise</a>
-  <a href="/admin/verificacoes?status=verificado" class="<%= statusFiltro === 'verificado' ? 'ativo' : '' %>">Aprovadas</a>
-  <a href="/admin/verificacoes?status=rejeitado" class="<%= statusFiltro === 'rejeitado' ? 'ativo' : '' %>">Recusadas</a>
+  <a href="/admin/verificacoes?status=verificado" class="<%= statusFiltro === 'verificado' ? 'ativo' : '' %>">Aprovados</a>
+  <a href="/admin/verificacoes?status=rejeitado" class="<%= statusFiltro === 'rejeitado' ? 'ativo' : '' %>">Recusados</a>
 </nav>
 
 <% if (!iaAtiva) { %><div class="aviso aviso-info">🤖 A triagem por IA está desativada (defina <code>ANTHROPIC_API_KEY</code>). A fila funciona normalmente, só sem a recomendação automática.</div><% } %>
@@ -21,20 +21,24 @@
         <strong><%= v.nome %></strong>
         <span class="tag"><%= rotulos.tipoUsuario[v.tipo] %></span>
         <span class="muted">#<%= v.id %> · <%= formatarData(v.criado_em) %><%= v.cidade ? ' · ' + v.cidade : '' %><%= v.estado ? '/' + v.estado : '' %></span>
-        <% if (v.convidante_nome) { %><span class="badge badge-verificado">🎟️ convite de <%= v.convidante_nome %></span><% } %>
         <% if (v.status !== 'em_analise') { %><span class="badge badge-<%= v.status %>"><%= rotulos.verificacao[v.status] %></span><% } %>
       </div>
       <div class="item-corpo">
-        <p class="mini muted"><%= v.email %><% if (v.whatsapp) { %> · <%= v.whatsapp %><% } %>
-          <% if (v.instagram) { %> · <a href="https://instagram.com/<%= encodeURIComponent(v.instagram) %>" target="_blank" rel="noopener">@<%= v.instagram %></a><% } %>
-          · <a href="/u/<%= v.usuario_id %>" target="_blank">ver perfil</a></p>
+        <p class="mini muted"><%= v.email %> · <a href="/u/<%= v.usuario_id %>" target="_blank">ver perfil</a></p>
+        <p>
+          <% if (v.instagram) { %><a href="https://instagram.com/<%= encodeURIComponent(v.instagram) %>" target="_blank" rel="noopener" class="btn btn-pequeno btn-secundario">Instagram @<%= v.instagram %></a><% } %>
+          <% if (v.outras_redes) { %><span class="mini" style="white-space: pre-line"><%= v.outras_redes %></span><% } %>
+          <% if (!v.instagram && !v.outras_redes) { %><span class="muted mini">Nenhuma rede informada.</span><% } %>
+        </p>
+        <% if (v.bio) { %><p class="mini">Bio: <%= v.bio %></p><% } %>
         <% if (v.observacao) { %><p class="obs">💬 <%= v.observacao %></p><% } %>
-        <% if (v.status === 'em_analise') { %>
+        <% if (v.status === 'em_analise' && v.fotos.length) { %>
           <div class="imagens-verificacao">
-            <a href="/admin/verificacoes/<%= v.id %>/imagem/selfie" target="_blank"><img src="/admin/verificacoes/<%= v.id %>/imagem/selfie" alt="Selfie" loading="lazy"></a>
-            <a href="/admin/verificacoes/<%= v.id %>/imagem/documento" target="_blank"><img src="/admin/verificacoes/<%= v.id %>/imagem/documento" alt="Documento" loading="lazy"></a>
+            <% v.fotos.forEach((f, i) => { %>
+              <a href="/admin/verificacoes/<%= v.id %>/foto/<%= i %>" target="_blank"><img src="/admin/verificacoes/<%= v.id %>/foto/<%= i %>" alt="Foto <%= i + 1 %>" loading="lazy"></a>
+            <% }) %>
           </div>
-        <% } else { %>
+        <% } else if (v.status !== 'em_analise') { %>
           <p class="mini muted">Fotos apagadas após a decisão<%= v.motivo_decisao ? ' · motivo: ' + v.motivo_decisao : '' %><%= v.decidido_em ? ' · ' + formatarData(v.decidido_em) : '' %>.</p>
         <% } %>
         <% if (v.analise_ia) { %>
@@ -45,7 +49,7 @@
       <div class="item-acoes">
         <form method="post" action="/admin/verificacoes/<%= v.id %>/decidir" class="inline">
           <input type="hidden" name="decisao" value="aprovar">
-          <button class="btn btn-pequeno btn-ok">✓ Aprovar</button>
+          <button class="btn btn-pequeno btn-ok">✓ Dar o selo</button>
         </form>
         <form method="post" action="/admin/verificacoes/<%= v.id %>/decidir" class="inline obs-form">
           <input type="hidden" name="decisao" value="rejeitar">

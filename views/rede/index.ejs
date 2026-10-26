@@ -44,15 +44,15 @@
 
 <% if (destaques.length) { %>
 <section>
-  <h2>Empresas verificadas</h2>
+  <h2>Empresas em destaque</h2>
   <ul class="cards">
     <% for (const e of destaques) { %>
       <li class="card card-membro">
         <%- include('../partials/avatar', { pessoa: e, tamanho: '' }) %>
         <div>
-          <h3><a href="/u/<%= e.id %>"><%= e.nome %></a> <span class="selo" title="Verificado">✓</span></h3>
+          <h3><a href="/u/<%= e.id %>"><%= e.nome %></a> <span class="selo" title="Selo <%= config.nome_selo %>">✓</span></h3>
           <p class="muted"><%= e.categoria %><%= e.cidade ? ' · ' + e.cidade : '' %><%= e.estado ? '/' + e.estado : '' %></p>
-          <% if (e.nota_media) { %><p class="estrelas">★ <%= e.nota_media %> <span class="muted">(<%= e.total_avaliacoes %>)</span></p><% } %>
+          <p class="mini"><%- include('../partials/nivel', { pontos: e.pontos }) %> <% if (e.nota_media) { %><span class="estrelas">★ <%= e.nota_media %></span><% } %> <% if (e.negocios) { %><span class="muted">· 🔗 <%= e.negocios %></span><% } %></p>
         </div>
       </li>
     <% } %>
@@ -64,10 +64,10 @@
   <h2>Como entrar</h2>
   <ol>
     <li><strong>Crie sua conta</strong> como pessoa ou empresa.</li>
-    <li><strong>Verifique sua identidade</strong>: selfie segurando o documento + foto do documento + seu Instagram. Ou use um <strong>convite</strong> de quem já é membro.</li>
-    <li>A moderação aprova e você ganha o <span class="selo">✓</span> de membro verificado, com direito a convidar mais gente.</li>
+    <li><strong>Ganhe o selo <%= config.nome_selo %></strong> <span class="selo">✓</span>: por <strong>convite</strong> de quem já tem o selo (entra na hora) ou mostrando suas redes sociais e fotos para a moderação.</li>
+    <li><strong>Movimente a rede</strong>: compre de membros, avalie, convide, publique. Cada ação dá pontos, sobe seu nível e seu lugar no <a href="/ranking">ranking</a>.</li>
   </ol>
-  <p class="mini muted">As fotos do documento são apagadas assim que a verificação é decidida. Só a moderação vê. <a href="/termos">Saiba mais</a>.</p>
+  <p class="mini muted">Fotos enviadas para o selo são apagadas assim que o pedido é decidido. Só a moderação vê. <a href="/termos">Saiba mais</a>.</p>
 </section>
 
 <%- include('../partials/foot') %>

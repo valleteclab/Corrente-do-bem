@@ -1,0 +1,48 @@
+<%- include('../partials/head') %>
+
+<h1>Ranking 🏆</h1>
+<p class="lead">Quem mais movimenta a rede: negócios fechados entre membros, avaliações, convites e participação.</p>
+
+<form method="get" action="/ranking" class="filtro filtro-linha">
+  <input type="text" name="cidade" placeholder="Filtrar por cidade" value="<%= cidadeFiltro %>" maxlength="120">
+  <button class="btn btn-pequeno btn-secundario">Filtrar</button>
+</form>
+
+<div class="duas-colunas duas-colunas-iguais">
+<section>
+  <h2>🏪 Empresas</h2>
+  <% if (empresas.length === 0) { %><p class="vazio">Ainda ninguém.</p><% } else { %>
+  <ol class="ranking">
+    <% empresas.forEach((e, i) => { %>
+      <li>
+        <span class="posicao"><%= i + 1 %></span>
+        <%- include('../partials/avatar', { pessoa: e, tamanho: 'avatar-mini' }) %>
+        <div>
+          <a href="/u/<%= e.id %>"><strong><%= e.nome %></strong></a> <%- include('../partials/nivel', { pontos: e.pontos }) %>
+          <div class="mini muted"><%= e.cidade %> · <%= e.pontos %> pts · 🔗 <%= e.negocios %><%= e.nota_media ? ' · ★ ' + e.nota_media : '' %></div>
+        </div>
+      </li>
+    <% }) %>
+  </ol>
+  <% } %>
+</section>
+<section>
+  <h2>🇧🇷 Membros</h2>
+  <% if (pessoas.length === 0) { %><p class="vazio">Ainda ninguém.</p><% } else { %>
+  <ol class="ranking">
+    <% pessoas.forEach((p, i) => { %>
+      <li>
+        <span class="posicao"><%= i + 1 %></span>
+        <%- include('../partials/avatar', { pessoa: p, tamanho: 'avatar-mini' }) %>
+        <div>
+          <a href="/u/<%= p.id %>"><strong><%= p.nome %></strong></a> <%- include('../partials/nivel', { pontos: p.pontos }) %>
+          <div class="mini muted"><%= p.cidade %> · <%= p.pontos %> pts · 🔗 <%= p.negocios %></div>
+        </div>
+      </li>
+    <% }) %>
+  </ol>
+  <% } %>
+</section>
+</div>
+
+<%- include('../partials/foot') %>

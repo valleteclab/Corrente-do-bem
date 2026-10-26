@@ -8,6 +8,7 @@ const { abrirBanco, CATEGORIAS } = require('./db');
 const { criarIa } = require('./ia');
 const { criarAuth } = require('./auth');
 const { criarUploads } = require('./upload');
+const { criarGamificacao } = require('./gamificacao');
 const criarRotasAuth = require('./routes/auth');
 const criarRotasRede = require('./routes/rede');
 const criarRotasCorrente = require('./routes/publico');
@@ -18,6 +19,7 @@ function criarApp(opcoes = {}) {
   const ia = opcoes.ia || criarIa();
   const uploads = opcoes.uploads || criarUploads(opcoes.dirUploads);
   const auth = criarAuth(db);
+  const gamificacao = criarGamificacao(db);
   const adminSenha = opcoes.adminSenha ?? process.env.ADMIN_PASSWORD ?? '';
   const segredo = opcoes.segredo ?? process.env.SESSION_SECRET ?? adminSenha ?? 'troque-este-segredo';
 
@@ -45,6 +47,7 @@ function criarApp(opcoes = {}) {
     res.locals.urlFoto = urlFoto;
     res.locals.urlBase = process.env.URL_BASE || `${req.protocol}://${req.get('host')}`;
     res.locals.iniciais = iniciais;
+    res.locals.nivelDe = gamificacao.nivelDe;
     res.locals.flash = req.signedCookies.flash ? safeJson(req.signedCookies.flash) : null;
     if (res.locals.flash) res.clearCookie('flash');
     res.locals.setFlash = (tipo, mensagem) => {
@@ -55,10 +58,10 @@ function criarApp(opcoes = {}) {
   app.use(auth.carregarUsuario);
 
   app.get('/health', (req, res) => res.json({ ok: true }));
-  app.use('/', criarRotasAuth(db, auth));
-  app.use('/', criarRotasRede(db, { auth, uploads, ia }));
+  app.use('/', criarRotasAuth(db, auth, gamificacao));
+  app.use('/', criarRotasRede(db, { auth, uploads, ia, gamificacao }));
   app.use('/corrente', criarRotasCorrente(db, ia));
-  app.use('/admin', criarRotasAdmin(db, { senha: adminSenha, segredo, ia, uploads }));
+  app.use('/admin', criarRotasAdmin(db, { senha: adminSenha, segredo, ia, uploads, gamificacao }));
 
   app.use((req, res) => {
     res.status(404).render('erro', { titulo: 'Página não encontrada', mensagem: 'Essa página não existe.' });
@@ -89,7 +92,7 @@ const ROTULOS = {
     cancelada: 'Cancelada',
   },
   pedido: { aberto: 'Aguardando', atendido: 'Atendido', cancelado: 'Cancelado' },
-  verificacao: { pendente: 'Não enviou', em_analise: 'Em análise', verificado: 'Verificado', rejeitado: 'Rejeitado' },
+  verificacao: { pendente: 'Sem selo', em_analise: 'Em análise', verificado: 'Com selo', rejeitado: 'Recusado' },
   tipoUsuario: { pessoa: 'Pessoa', empresa: 'Empresa' },
 };
 

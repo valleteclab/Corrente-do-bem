@@ -129,6 +129,29 @@ CREATE TABLE IF NOT EXISTS avaliacoes (
   UNIQUE (empresa_id, autor_id)
 );
 
+CREATE TABLE IF NOT EXISTS pontos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  acao TEXT NOT NULL,
+  pontos INTEGER NOT NULL,
+  referencia TEXT NOT NULL DEFAULT '',
+  criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (usuario_id, acao, referencia)
+);
+
+CREATE TABLE IF NOT EXISTS negocios (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  empresa_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  cliente_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  descricao TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'pendente',
+  criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+  decidido_em TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_pontos_usuario ON pontos(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_negocios_empresa ON negocios(empresa_id, status);
+CREATE INDEX IF NOT EXISTS idx_negocios_cliente ON negocios(cliente_id);
 CREATE INDEX IF NOT EXISTS idx_usuarios_status ON usuarios(status_verificacao);
 CREATE INDEX IF NOT EXISTS idx_usuarios_cidade ON usuarios(cidade);
 CREATE INDEX IF NOT EXISTS idx_posts_criado ON posts(criado_em);
@@ -155,8 +178,15 @@ function gerarCodigoConvite() {
   return crypto.randomBytes(5).toString('base64url').toUpperCase().replace(/[^A-Z0-9]/g, 'X').slice(0, 8);
 }
 
+function migrarRede(db) {
+  const colunas = new Set(db.prepare('PRAGMA table_info(verificacoes)').all().map((c) => c.name));
+  if (!colunas.has('outras_redes')) db.exec("ALTER TABLE verificacoes ADD COLUMN outras_redes TEXT NOT NULL DEFAULT ''");
+  if (!colunas.has('fotos')) db.exec("ALTER TABLE verificacoes ADD COLUMN fotos TEXT NOT NULL DEFAULT '[]'");
+}
+
 function criarRepositorioRede(db) {
   db.exec(SCHEMA_REDE);
+  migrarRede(db);
   const agora = () => new Date().toISOString().replace('T', ' ').slice(0, 19);
   const limpar = (l) => (l ? { ...l } : null);
   const semSenha = (u) => { if (!u) return null; const { senha_hash, ...resto } = u; return resto; };
@@ -165,10 +195,13 @@ function criarRepositorioRede(db) {
     u.status_verificacao, u.papel, u.banido, u.criado_em`;
 
   const usuarios = {
+    /** Quem entra por convite de membro verificado já nasce verificado (o convidante responde por ele). */
     criar({ tipo = 'pessoa', nome, email, senha, cidade = '', estado = '', whatsapp = '', instagram = '', categoria = '', convidado_por = null }) {
-      const r = db.prepare(`INSERT INTO usuarios (tipo, nome, email, senha_hash, cidade, estado, whatsapp, instagram, categoria, convidado_por, consentimento_em)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-        .run(TIPOS_USUARIO.includes(tipo) ? tipo : 'pessoa', nome, email.toLowerCase(), gerarHashSenha(senha), cidade, estado, whatsapp, instagram, categoria, convidado_por, agora());
+      const verificado = Boolean(convidado_por);
+      const r = db.prepare(`INSERT INTO usuarios (tipo, nome, email, senha_hash, cidade, estado, whatsapp, instagram, categoria, convidado_por, consentimento_em, status_verificacao, convites_restantes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(TIPOS_USUARIO.includes(tipo) ? tipo : 'pessoa', nome, email.toLowerCase(), gerarHashSenha(senha), cidade, estado, whatsapp, instagram, categoria, convidado_por, agora(),
+          verificado ? 'verificado' : 'pendente', verificado ? CONVITES_INICIAIS : 0);
       return Number(r.lastInsertRowid);
     },
     buscar(id) {
@@ -289,12 +322,15 @@ function criarRepositorioRede(db) {
     },
   };
 
+  const comFotos = (v) => (v ? { ...v, fotos: safeLista(v.fotos) } : null);
+
   const verificacoes = {
-    criar({ usuario_id, selfie = '', documento = '', instagram = '', observacao = '' }) {
+    /** Verificação por redes sociais e/ou fotos. As fotos ficam privadas e são apagadas após a decisão. */
+    criar({ usuario_id, instagram = '', outras_redes = '', fotos = [], observacao = '' }) {
       db.exec('BEGIN');
       try {
-        const r = db.prepare('INSERT INTO verificacoes (usuario_id, selfie, documento, instagram, observacao) VALUES (?, ?, ?, ?, ?)')
-          .run(usuario_id, selfie, documento, instagram, observacao);
+        const r = db.prepare('INSERT INTO verificacoes (usuario_id, instagram, outras_redes, fotos, observacao) VALUES (?, ?, ?, ?, ?)')
+          .run(usuario_id, instagram, outras_redes, JSON.stringify(fotos), observacao);
         db.prepare("UPDATE usuarios SET status_verificacao = 'em_analise', instagram = CASE WHEN ? <> '' THEN ? ELSE instagram END, atualizado_em = ? WHERE id = ?")
           .run(instagram, instagram, agora(), usuario_id);
         db.exec('COMMIT');
@@ -302,19 +338,19 @@ function criarRepositorioRede(db) {
       } catch (e) { db.exec('ROLLBACK'); throw e; }
     },
     buscar(id) {
-      return limpar(db.prepare(`SELECT v.*, u.nome, u.email, u.tipo, u.cidade, u.estado, u.foto, u.convidado_por, u.whatsapp,
+      return comFotos(db.prepare(`SELECT v.*, u.nome, u.email, u.tipo, u.cidade, u.estado, u.foto, u.convidado_por, u.whatsapp, u.bio,
           (SELECT nome FROM usuarios c WHERE c.id = u.convidado_por) AS convidante_nome
         FROM verificacoes v JOIN usuarios u ON u.id = v.usuario_id WHERE v.id = ?`).get(id));
     },
     ultimaDoUsuario(usuarioId) {
-      return limpar(db.prepare('SELECT * FROM verificacoes WHERE usuario_id = ? ORDER BY id DESC LIMIT 1').get(usuarioId));
+      return comFotos(db.prepare('SELECT * FROM verificacoes WHERE usuario_id = ? ORDER BY id DESC LIMIT 1').get(usuarioId));
     },
     listar({ status = 'em_analise' } = {}) {
       const where = status ? 'WHERE v.status = ?' : '';
       const params = status ? [status] : [];
-      return db.prepare(`SELECT v.*, u.nome, u.email, u.tipo, u.cidade, u.estado, u.foto, u.convidado_por,
+      return db.prepare(`SELECT v.*, u.nome, u.email, u.tipo, u.cidade, u.estado, u.foto, u.convidado_por, u.bio,
           (SELECT nome FROM usuarios c WHERE c.id = u.convidado_por) AS convidante_nome
-        FROM verificacoes v JOIN usuarios u ON u.id = v.usuario_id ${where} ORDER BY v.id ASC`).all(...params).map(limpar);
+        FROM verificacoes v JOIN usuarios u ON u.id = v.usuario_id ${where} ORDER BY v.id ASC`).all(...params).map(comFotos);
     },
     salvarAnaliseIa(id, { resumo, recomendacao }) {
       db.prepare('UPDATE verificacoes SET analise_ia = ?, recomendacao_ia = ? WHERE id = ?').run(resumo || '', recomendacao || '', id);
@@ -326,7 +362,7 @@ function criarRepositorioRede(db) {
       const status = aprovado ? 'verificado' : 'rejeitado';
       db.exec('BEGIN');
       try {
-        db.prepare("UPDATE verificacoes SET status = ?, motivo_decisao = ?, decidido_em = ?, selfie = '', documento = '' WHERE id = ?")
+        db.prepare("UPDATE verificacoes SET status = ?, motivo_decisao = ?, decidido_em = ?, fotos = '[]' WHERE id = ?")
           .run(status, motivo, agora(), id);
         db.prepare('UPDATE usuarios SET status_verificacao = ?, atualizado_em = ? WHERE id = ?').run(status, agora(), v.usuario_id);
         if (aprovado) {
@@ -334,7 +370,85 @@ function criarRepositorioRede(db) {
         }
         db.exec('COMMIT');
       } catch (e) { db.exec('ROLLBACK'); throw e; }
-      return { usuario_id: v.usuario_id, selfie: v.selfie, documento: v.documento };
+      return { usuario_id: v.usuario_id, fotos: v.fotos };
+    },
+  };
+
+  // ---------- gamificação: pontos e negócios ----------
+  const pontos = {
+    /** Dá pontos uma única vez por (usuário, ação, referência). Retorna true se creditou. */
+    dar(usuarioId, acao, quantidade, referencia = '') {
+      const r = db.prepare('INSERT OR IGNORE INTO pontos (usuario_id, acao, pontos, referencia) VALUES (?, ?, ?, ?)').run(usuarioId, acao, quantidade, String(referencia));
+      return r.changes > 0;
+    },
+    total(usuarioId) {
+      return Number(db.prepare('SELECT COALESCE(SUM(pontos), 0) n FROM pontos WHERE usuario_id = ?').get(usuarioId).n);
+    },
+    contarAcao(usuarioId, acao, { hoje = false } = {}) {
+      const sql = hoje
+        ? "SELECT COUNT(*) n FROM pontos WHERE usuario_id = ? AND acao = ? AND date(criado_em) = date('now')"
+        : 'SELECT COUNT(*) n FROM pontos WHERE usuario_id = ? AND acao = ?';
+      return Number(db.prepare(sql).get(usuarioId, acao).n);
+    },
+    historico(usuarioId, limite = 30) {
+      return db.prepare('SELECT * FROM pontos WHERE usuario_id = ? ORDER BY id DESC LIMIT ?').all(usuarioId, limite).map(limpar);
+    },
+    /** Estatísticas usadas para níveis e conquistas. */
+    estatisticas(usuarioId) {
+      const n = (sql, ...p) => Number(db.prepare(sql).get(...p).n);
+      return {
+        pontos: pontos.total(usuarioId),
+        convidados_verificados: n("SELECT COUNT(*) n FROM usuarios WHERE convidado_por = ? AND status_verificacao = 'verificado'", usuarioId),
+        negocios_como_cliente: n("SELECT COUNT(*) n FROM negocios WHERE cliente_id = ? AND status = 'confirmado'", usuarioId),
+        negocios_como_empresa: n("SELECT COUNT(*) n FROM negocios WHERE empresa_id = ? AND status = 'confirmado'", usuarioId),
+        avaliacoes_feitas: n('SELECT COUNT(*) n FROM avaliacoes WHERE autor_id = ?', usuarioId),
+        avaliacoes_recebidas: n('SELECT COUNT(*) n FROM avaliacoes WHERE empresa_id = ?', usuarioId),
+        posts: n('SELECT COUNT(*) n FROM posts WHERE usuario_id = ? AND removido = 0', usuarioId),
+        vagas: n('SELECT COUNT(*) n FROM vagas WHERE empresa_id = ?', usuarioId),
+        candidaturas: n('SELECT COUNT(*) n FROM candidaturas WHERE usuario_id = ?', usuarioId),
+      };
+    },
+    ranking({ tipo, cidade, limite = 20 } = {}) {
+      const where = ["u.status_verificacao = 'verificado'", 'u.banido = 0'];
+      const params = [];
+      if (tipo) { where.push('u.tipo = ?'); params.push(tipo); }
+      if (cidade) { where.push('LOWER(u.cidade) LIKE ?'); params.push(`%${cidade.toLowerCase()}%`); }
+      params.push(limite);
+      return db.prepare(`SELECT u.id, u.nome, u.tipo, u.foto, u.cidade, u.estado, u.categoria,
+          COALESCE((SELECT SUM(p.pontos) FROM pontos p WHERE p.usuario_id = u.id), 0) AS pontos,
+          (SELECT COUNT(*) FROM negocios n WHERE (n.empresa_id = u.id OR n.cliente_id = u.id) AND n.status = 'confirmado') AS negocios,
+          (SELECT ROUND(AVG(nota), 1) FROM avaliacoes a WHERE a.empresa_id = u.id) AS nota_media
+        FROM usuarios u WHERE ${where.join(' AND ')} ORDER BY pontos DESC, negocios DESC, u.id ASC LIMIT ?`).all(...params).map(limpar);
+    },
+  };
+
+  const negocios = {
+    criar({ empresa_id, cliente_id, descricao = '' }) {
+      const r = db.prepare('INSERT INTO negocios (empresa_id, cliente_id, descricao) VALUES (?, ?, ?)').run(empresa_id, cliente_id, descricao);
+      return Number(r.lastInsertRowid);
+    },
+    buscar(id) {
+      return limpar(db.prepare(`SELECT n.*, e.nome AS empresa_nome, c.nome AS cliente_nome, c.foto AS cliente_foto, c.cidade AS cliente_cidade
+        FROM negocios n JOIN usuarios e ON e.id = n.empresa_id JOIN usuarios c ON c.id = n.cliente_id WHERE n.id = ?`).get(id));
+    },
+    daEmpresa(empresaId, status) {
+      const where = status ? 'AND n.status = ?' : '';
+      const params = status ? [empresaId, status] : [empresaId];
+      return db.prepare(`SELECT n.*, c.nome AS cliente_nome, c.foto AS cliente_foto, c.cidade AS cliente_cidade, c.tipo AS cliente_tipo
+        FROM negocios n JOIN usuarios c ON c.id = n.cliente_id WHERE n.empresa_id = ? ${where} ORDER BY n.id DESC`).all(...params).map(limpar);
+    },
+    doCliente(clienteId) {
+      return db.prepare(`SELECT n.*, e.nome AS empresa_nome, e.foto AS empresa_foto
+        FROM negocios n JOIN usuarios e ON e.id = n.empresa_id WHERE n.cliente_id = ? ORDER BY n.id DESC`).all(clienteId).map(limpar);
+    },
+    pendentesHoje(clienteId, empresaId) {
+      return Number(db.prepare("SELECT COUNT(*) n FROM negocios WHERE cliente_id = ? AND empresa_id = ? AND status = 'pendente'").get(clienteId, empresaId).n);
+    },
+    decidir(id, confirmado) {
+      db.prepare('UPDATE negocios SET status = ?, decidido_em = ? WHERE id = ? AND status = ?').run(confirmado ? 'confirmado' : 'recusado', agora(), id, 'pendente');
+    },
+    contarConfirmados(usuarioId) {
+      return Number(db.prepare("SELECT COUNT(*) n FROM negocios WHERE (empresa_id = ? OR cliente_id = ?) AND status = 'confirmado'").get(usuarioId, usuarioId).n);
     },
   };
 
@@ -429,7 +543,11 @@ function criarRepositorioRede(db) {
     },
   };
 
-  return { usuarios, convites, verificacoes, posts, denuncias, vagas, avaliacoes };
+  return { usuarios, convites, verificacoes, posts, denuncias, vagas, avaliacoes, pontos, negocios };
+}
+
+function safeLista(texto) {
+  try { const v = JSON.parse(texto || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
 }
 
 module.exports = {

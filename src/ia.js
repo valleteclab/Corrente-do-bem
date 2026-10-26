@@ -197,28 +197,28 @@ function criarIa({ client, modelo = MODELO, logger = console } = {}) {
   // ---------- triagem de verificação de identidade ----------
 
   /**
-   * Pré-análise de uma verificação (selfie com documento + foto do documento + Instagram).
-   * Só checa qualidade e coerência das imagens. Não decide: a moderação decide.
+   * Pré-análise de um pedido de selo (redes sociais informadas + até 3 fotos).
+   * Só checa se o perfil parece real e consistente. Não decide: a moderação decide.
    * Retorna { recomendacao: 'aprovar'|'revisar'|'rejeitar', resumo, ... }.
    */
-  async function analisarVerificacao({ selfieBase64, selfieTipo, documentoBase64, documentoTipo, nome, instagram, cidade, convidadoPor }) {
+  async function analisarVerificacao({ fotos = [], nome, tipo, bio, instagram, outrasRedes, cidade, observacao }) {
     if (!ativo) throw new Error('IA desativada: defina ANTHROPIC_API_KEY');
     const conteudo = [];
-    if (selfieBase64) {
-      conteudo.push({ type: 'text', text: 'Imagem 1: selfie da pessoa segurando o documento.' });
-      conteudo.push({ type: 'image', source: { type: 'base64', media_type: selfieTipo, data: selfieBase64 } });
-    }
-    if (documentoBase64) {
-      conteudo.push({ type: 'text', text: 'Imagem 2: foto do documento (RG ou CNH).' });
-      conteudo.push({ type: 'image', source: { type: 'base64', media_type: documentoTipo, data: documentoBase64 } });
-    }
+    fotos.forEach((f, i) => {
+      conteudo.push({ type: 'text', text: `Foto ${i + 1} enviada pelo membro.` });
+      conteudo.push({ type: 'image', source: { type: 'base64', media_type: f.tipo, data: f.base64 } });
+    });
     conteudo.push({
       type: 'text',
       text: [
+        `Tipo de perfil: ${tipo === 'empresa' ? 'empresa' : 'pessoa'}`,
         `Nome informado no cadastro: ${nome}`,
         `Cidade informada: ${cidade || '(não informada)'}`,
+        `Bio: ${bio || '(vazia)'}`,
         `Instagram informado: ${instagram ? '@' + instagram : '(não informado)'}`,
-        `Entrou por convite de membro verificado: ${convidadoPor ? 'sim' : 'não'}`,
+        `Outras redes: ${outrasRedes || '(nenhuma)'}`,
+        `Observação do membro: ${observacao || '(nenhuma)'}`,
+        fotos.length ? '' : 'Nenhuma foto foi enviada: avalie só pelos dados.',
       ].join('\n'),
     });
 
@@ -239,33 +239,28 @@ function criarIa({ client, modelo = MODELO, logger = console } = {}) {
     return {
       recomendacao,
       resumo: String(bruto.resumo || '').trim().slice(0, 800),
-      documento_legivel: Boolean(bruto.documento_legivel),
-      rosto_visivel: Boolean(bruto.rosto_visivel),
-      mesma_pessoa: String(bruto.mesma_pessoa || 'incerto'),
-      nome_confere: String(bruto.nome_confere || 'incerto'),
+      fotos_reais: String(bruto.fotos_reais || 'incerto'),
+      dados_consistentes: Boolean(bruto.dados_consistentes),
+      sinais_de_fraude: Array.isArray(bruto.sinais_de_fraude) ? bruto.sinais_de_fraude.map(String).slice(0, 5) : [],
     };
   }
 
-  /** Lê as imagens da verificação, chama a IA e grava a recomendação. */
+  /** Lê as fotos da verificação, chama a IA e grava a recomendação. */
   async function analisarVerificacaoEAplicar(db, uploads, verificacaoId) {
     const fs = require('node:fs');
     const path = require('node:path');
     const v = db.verificacoes.buscar(verificacaoId);
     if (!v || v.status !== 'em_analise') return null;
-    const ler = (nome) => {
-      if (!nome) return null;
+    const fotos = [];
+    for (const nome of v.fotos || []) {
       const caminho = uploads.caminhoPrivado(nome);
-      if (!fs.existsSync(caminho)) return null;
+      if (!fs.existsSync(caminho)) continue;
       const ext = path.extname(caminho).toLowerCase();
-      const tipo = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
-      return { base64: fs.readFileSync(caminho).toString('base64'), tipo };
-    };
-    const selfie = ler(v.selfie);
-    const documento = ler(v.documento);
+      fotos.push({ base64: fs.readFileSync(caminho).toString('base64'), tipo: ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg' });
+    }
     const analise = await analisarVerificacao({
-      selfieBase64: selfie && selfie.base64, selfieTipo: selfie && selfie.tipo,
-      documentoBase64: documento && documento.base64, documentoTipo: documento && documento.tipo,
-      nome: v.nome, instagram: v.instagram, cidade: [v.cidade, v.estado].filter(Boolean).join('/'), convidadoPor: v.convidado_por,
+      fotos, nome: v.nome, tipo: v.tipo, bio: v.bio, instagram: v.instagram, outrasRedes: v.outras_redes,
+      cidade: [v.cidade, v.estado].filter(Boolean).join('/'), observacao: v.observacao,
     });
     db.verificacoes.salvarAnaliseIa(verificacaoId, { resumo: analise.resumo, recomendacao: analise.recomendacao });
     return analise;
@@ -277,29 +272,30 @@ function criarIa({ client, modelo = MODELO, logger = console } = {}) {
 const ESQUEMA_VERIFICACAO = {
   type: 'object',
   properties: {
-    documento_legivel: { type: 'boolean', description: 'A foto do documento está nítida e dá para ler nome e foto.' },
-    rosto_visivel: { type: 'boolean', description: 'Na selfie aparece um rosto real segurando um documento.' },
-    mesma_pessoa: { type: 'string', enum: ['sim', 'provavel', 'nao', 'incerto'], description: 'A pessoa da selfie parece ser a mesma da foto do documento.' },
-    nome_confere: { type: 'string', enum: ['sim', 'nao', 'incerto'], description: 'O nome legível no documento bate com o nome do cadastro.' },
+    fotos_reais: { type: 'string', enum: ['sim', 'provavel', 'nao', 'incerto', 'sem_fotos'], description: 'As fotos parecem de uma pessoa/empresa real (não são imagens de banco, capturas de tela, memes ou geradas).' },
+    dados_consistentes: { type: 'boolean', description: 'Nome, bio, cidade e redes informadas são coerentes entre si e com as fotos.' },
+    sinais_de_fraude: { type: 'array', items: { type: 'string' }, description: 'Sinais de conta falsa ou spam, se houver. Lista vazia se nada.' },
     recomendacao: { type: 'string', enum: ['aprovar', 'revisar', 'rejeitar'] },
-    resumo: { type: 'string', description: 'Duas ou três frases para o moderador, em português, sem transcrever números do documento.' },
+    resumo: { type: 'string', description: 'Duas ou três frases para o moderador, em português.' },
   },
-  required: ['documento_legivel', 'rosto_visivel', 'mesma_pessoa', 'nome_confere', 'recomendacao', 'resumo'],
+  required: ['fotos_reais', 'dados_consistentes', 'sinais_de_fraude', 'recomendacao', 'resumo'],
   additionalProperties: false,
 };
 
-const SISTEMA_VERIFICACAO = `Você faz a triagem de verificações de identidade de uma rede social brasileira.
-Cada verificação tem uma selfie da pessoa segurando um documento e uma foto do documento (RG ou CNH).
+const SISTEMA_VERIFICACAO = `Você faz a triagem de pedidos de selo de uma rede social brasileira de comércio e trabalho entre membros.
+O membro informa suas redes sociais (Instagram e outras) e pode enviar até 3 fotos. Você não tem acesso à internet,
+então não pode abrir os perfis: avalie só o que foi enviado.
 
 Avalie apenas:
-- se o documento está legível (nome e foto visíveis);
-- se a selfie mostra um rosto real segurando um documento (não é foto de tela, não é imagem baixada);
-- se a pessoa da selfie parece a mesma da foto do documento;
-- se o nome do documento bate com o nome do cadastro (empresas podem cadastrar o nome do responsável).
+- se as fotos parecem de uma pessoa ou empresa real (não são imagens de banco, capturas de tela, memes, logos
+  genéricos ou imagens geradas);
+- se nome, bio, cidade e redes informadas são coerentes entre si e com as fotos (ex.: o handle do Instagram
+  lembra o nome; a empresa tem cara de empresa);
+- sinais de spam ou conta falsa (nome genérico, handle aleatório, texto copiado, nada de concreto).
 
-Recomende "aprovar" quando tudo confere com clareza, "rejeitar" quando há sinal forte de fraude ou as imagens
-não servem (ilegíveis, não é documento, não é selfie), e "revisar" em qualquer dúvida.
-Nunca avalie aparência, opinião, religião ou política da pessoa; isso não é critério.
-No resumo, nunca transcreva números de documento, CPF ou endereço. Responda apenas com o JSON pedido.`;
+Recomende "aprovar" quando tudo parece real e consistente, "rejeitar" quando há sinal forte de conta falsa
+ou as imagens claramente não servem, e "revisar" em qualquer dúvida ou quando há pouca informação.
+Nunca avalie aparência, religião ou opinião política da pessoa; isso não é critério para você.
+Responda apenas com o JSON pedido.`;
 
 module.exports = { criarIa, ESQUEMA_RESPOSTA, SISTEMA, ESQUEMA_VERIFICACAO, SISTEMA_VERIFICACAO };

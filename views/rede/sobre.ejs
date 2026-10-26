@@ -5,17 +5,29 @@
 
 <section class="passos">
   <div class="passo"><span class="num">1</span><h3>Conta</h3><p>Pessoa ou empresa. Nome, cidade, contato. Empresas escolhem a categoria para aparecer no diretório.</p></div>
-  <div class="passo"><span class="num">2</span><h3>Verificação</h3><p>Selfie segurando o documento, foto do documento e seu Instagram. A moderação confere se você é uma pessoa real. Quem entra por convite de membro verificado tem prioridade na fila.</p></div>
-  <div class="passo"><span class="num">3</span><h3>Selo ✓</h3><p>Aprovado, você ganha o selo de membro verificado e 5 convites para trazer quem você confia. Quem convida responde por quem trouxe.</p></div>
-  <div class="passo"><span class="num">4</span><h3>Comércio, trabalho e ajuda</h3><p>Diretório de empresas e profissionais com avaliações, vagas publicadas por empresas da rede, feed por cidade e a <%= config.nome_campanha %> para doações.</p></div>
+  <div class="passo"><span class="num">2</span><h3>Selo <%= config.nome_selo %> ✓</h3><p>Por <strong>convite</strong> de quem já tem o selo você entra na hora. Sem convite, informe suas redes sociais e/ou envie fotos: a moderação confere e libera. Quem tem o selo ganha 5 convites, e responde por quem convida.</p></div>
+  <div class="passo"><span class="num">3</span><h3>Comércio entre membros</h3><p>Encontre empresas e profissionais no diretório. Depois de comprar ou contratar, registre o negócio no perfil da empresa. Ela confirma e os dois ganham pontos.</p></div>
+  <div class="passo"><span class="num">4</span><h3>Trabalho e ajuda</h3><p>Empresas publicam vagas abertas a todos os membros com selo. A <%= config.nome_campanha %> organiza doações e repassa o que sobra.</p></div>
+</section>
+
+<section class="destaque">
+  <h2>Pontos e níveis</h2>
+  <p>Cada ação que fortalece a rede dá pontos. Pontos sobem seu nível e seu lugar no <a href="/ranking">ranking</a>.</p>
+  <div class="niveis">
+    <% for (const n of niveis) { %><div class="nivel-card"><span><%= n.icone %></span><strong><%= n.nome %></strong><small><%= n.minimo %>+ pts</small></div><% } %>
+  </div>
+  <ul class="mini">
+    <% for (const a of Object.values(acoes)) { %><li><strong>+<%= a.pontos %></strong> <%= a.rotulo %><%= a.limiteDia ? ` (até ${a.limiteDia}/dia)` : '' %></li><% } %>
+  </ul>
 </section>
 
 <section class="destaque">
   <h2>Regras simples</h2>
   <ul>
-    <li>Perfil real, nome real. Sem contas falsas.</li>
+    <li>Perfil real, nome real. Sem contas falsas. Quem convida responde por quem trouxe.</li>
     <li>Respeito. Ofensas, ameaças e golpes resultam em suspensão.</li>
-    <li>Vagas são abertas a todos os membros verificados. A empresa escolhe quem contrata.</li>
+    <li>Negócio registrado tem que ter acontecido. Confirmações falsas tiram pontos e o selo.</li>
+    <li>Vagas são abertas a todos os membros com selo. A empresa escolhe quem contrata.</li>
     <li>Denuncie o que estiver errado. A moderação analisa tudo.</li>
   </ul>
 </section>

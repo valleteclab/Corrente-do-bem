@@ -6,20 +6,32 @@ const { CATEGORIAS_EMPRESA, TIPOS_VAGA } = require('../db-rede');
 function texto(v, max = 500) { return String(v ?? '').replace(/\r/g, '').trim().slice(0, max); }
 function idDe(v) { const n = Number.parseInt(v, 10); return Number.isInteger(n) && n > 0 ? n : null; }
 function instagramLimpo(v) { return texto(v, 60).replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/^@/, '').replace(/\/.*$/, ''); }
+function redeLimpa(v) { return texto(v, 200).replace(/^@/, ''); }
 
-module.exports = function criarRotasRede(db, { auth, uploads, ia }) {
+module.exports = function criarRotasRede(db, { auth, uploads, ia, gamificacao }) {
   const router = express.Router();
 
   // ----- início -----
   router.get('/', (req, res) => {
     const stats = db.usuarios.contar();
-    const destaques = db.usuarios.listar({ apenasVerificados: true, tipo: 'empresa', limite: 6 });
+    const destaques = db.pontos.ranking({ tipo: 'empresa', limite: 6 });
     const vagas = db.vagas.listar().slice(0, 4);
     res.render('rede/index', { titulo: null, stats, destaques, vagas });
   });
 
-  router.get('/sobre', (req, res) => res.render('rede/sobre', { titulo: 'Como funciona' }));
+  router.get('/sobre', (req, res) => res.render('rede/sobre', { titulo: 'Como funciona', niveis: gamificacao.NIVEIS, acoes: gamificacao.ACOES }));
   router.get('/termos', (req, res) => res.render('rede/termos', { titulo: 'Termos e privacidade' }));
+
+  router.get('/ranking', (req, res) => {
+    const cidade = texto(req.query.cidade, 120);
+    res.render('rede/ranking', {
+      titulo: 'Ranking',
+      empresas: db.pontos.ranking({ tipo: 'empresa', cidade, limite: 20 }),
+      pessoas: db.pontos.ranking({ tipo: 'pessoa', cidade, limite: 20 }),
+      cidadeFiltro: cidade,
+      nivelDe: gamificacao.nivelDe,
+    });
+  });
 
   // ----- feed -----
   router.get('/feed', auth.exigirLogin, (req, res) => {
@@ -29,13 +41,16 @@ module.exports = function criarRotasRede(db, { auth, uploads, ia }) {
       posts: db.posts.listar({ cidade }),
       cidadeFiltro: cidade,
       stats: db.usuarios.contar(),
+      meu: gamificacao.resumo(req.usuario.id),
+      pendentes: req.usuario.tipo === 'empresa' ? db.negocios.daEmpresa(req.usuario.id, 'pendente').length : 0,
     });
   });
 
   router.post('/post', auth.exigirVerificado, (req, res) => {
     const txt = texto(req.body.texto, 2000);
     if (txt.length < 2) { res.locals.setFlash('erro', 'Escreva alguma coisa.'); return res.redirect('/feed'); }
-    db.posts.criar({ usuario_id: req.usuario.id, texto: txt, cidade: req.usuario.cidade });
+    const id = db.posts.criar({ usuario_id: req.usuario.id, texto: txt, cidade: req.usuario.cidade });
+    gamificacao.premiar(req.usuario.id, 'post', String(id));
     res.redirect('/feed');
   });
 
@@ -81,9 +96,11 @@ module.exports = function criarRotasRede(db, { auth, uploads, ia }) {
       perfil: mostrarContato ? perfil : { ...perfil, whatsapp: '' },
       mostrarContato,
       souEu,
+      jogo: gamificacao.resumo(perfil.id),
       avaliacoes: perfil.tipo === 'empresa' ? db.avaliacoes.daEmpresa(perfil.id) : [],
       vagas: perfil.tipo === 'empresa' ? db.vagas.listar({ empresa_id: perfil.id }) : [],
       posts: db.posts.listar({ limite: 10 }).filter((p) => p.usuario_id === perfil.id),
+      negocioPendente: req.usuario && perfil.tipo === 'empresa' && !souEu ? db.negocios.pendentesHoje(req.usuario.id, perfil.id) > 0 : false,
     });
   });
 
@@ -92,6 +109,8 @@ module.exports = function criarRotasRede(db, { auth, uploads, ia }) {
     const alvo = id ? db.usuarios.buscar(id) : null;
     if (!alvo || alvo.tipo !== 'empresa' || alvo.id === req.usuario.id) { res.locals.setFlash('erro', 'Não dá para avaliar esse perfil.'); return res.redirect('/diretorio'); }
     db.avaliacoes.salvar({ empresa_id: id, autor_id: req.usuario.id, nota: req.body.nota, texto: texto(req.body.texto, 600) });
+    gamificacao.premiar(req.usuario.id, 'avaliou', String(id));
+    gamificacao.premiar(id, 'foi_avaliado', String(req.usuario.id));
     res.locals.setFlash('ok', 'Avaliação salva. Obrigado!');
     res.redirect(`/u/${id}`);
   });
@@ -105,9 +124,53 @@ module.exports = function criarRotasRede(db, { auth, uploads, ia }) {
     res.redirect(id ? `/u/${id}` : '/diretorio');
   });
 
+  // ----- negócios entre membros (o coração do incentivo ao comércio) -----
+  router.post('/u/:id/negocio', auth.exigirVerificado, (req, res) => {
+    const id = idDe(req.params.id);
+    const empresa = id ? db.usuarios.buscar(id) : null;
+    if (!empresa || empresa.tipo !== 'empresa' || empresa.id === req.usuario.id || empresa.status_verificacao !== 'verificado') {
+      res.locals.setFlash('erro', 'Só dá para registrar negócio com empresas verificadas.');
+      return res.redirect('/diretorio');
+    }
+    if (db.negocios.pendentesHoje(req.usuario.id, id) > 0) {
+      res.locals.setFlash('erro', 'Você já tem um negócio aguardando confirmação dessa empresa.');
+      return res.redirect(`/u/${id}`);
+    }
+    db.negocios.criar({ empresa_id: id, cliente_id: req.usuario.id, descricao: texto(req.body.descricao, 300) });
+    res.locals.setFlash('ok', `Registrado! Quando ${empresa.nome} confirmar, vocês dois ganham pontos.`);
+    res.redirect(`/u/${id}`);
+  });
+
+  router.get('/negocios', auth.exigirLogin, (req, res) => {
+    res.render('rede/negocios', {
+      titulo: 'Negócios na rede',
+      comoEmpresa: req.usuario.tipo === 'empresa' ? db.negocios.daEmpresa(req.usuario.id) : [],
+      comoCliente: db.negocios.doCliente(req.usuario.id),
+      jogo: gamificacao.resumo(req.usuario.id),
+      historico: db.pontos.historico(req.usuario.id),
+      acoes: gamificacao.ACOES,
+    });
+  });
+
+  router.post('/negocios/:id/decidir', auth.exigirEmpresa, (req, res) => {
+    const id = idDe(req.params.id);
+    const n = id ? db.negocios.buscar(id) : null;
+    if (!n || n.empresa_id !== req.usuario.id || n.status !== 'pendente') return res.redirect('/negocios');
+    const confirmado = req.body.decisao === 'confirmar';
+    db.negocios.decidir(id, confirmado);
+    if (confirmado) {
+      gamificacao.premiar(n.cliente_id, 'negocio_cliente', String(id));
+      gamificacao.premiar(n.empresa_id, 'negocio_empresa', String(id));
+      res.locals.setFlash('ok', `Negócio confirmado! Você e ${n.cliente_nome} ganharam pontos.`);
+    } else {
+      res.locals.setFlash('ok', 'Negócio recusado.');
+    }
+    res.redirect('/negocios');
+  });
+
   // ----- meu perfil -----
   router.get('/perfil', auth.exigirLogin, (req, res) => {
-    res.render('rede/perfil-editar', { titulo: 'Meu perfil', valores: req.usuario, erros: [], categoriasEmpresa: CATEGORIAS_EMPRESA });
+    res.render('rede/perfil-editar', { titulo: 'Meu perfil', valores: req.usuario, erros: [], categoriasEmpresa: CATEGORIAS_EMPRESA, jogo: gamificacao.resumo(req.usuario.id) });
   });
 
   router.post('/perfil', auth.exigirLogin, (req, res) => {
@@ -125,12 +188,13 @@ module.exports = function criarRotasRede(db, { auth, uploads, ia }) {
     const erros = [];
     if (!valores.nome) erros.push('O nome é obrigatório.');
     if (!valores.cidade) erros.push('A cidade é obrigatória.');
-    if (erros.length) return res.status(422).render('rede/perfil-editar', { titulo: 'Meu perfil', valores: { ...req.usuario, ...valores }, erros, categoriasEmpresa: CATEGORIAS_EMPRESA });
+    if (erros.length) return res.status(422).render('rede/perfil-editar', { titulo: 'Meu perfil', valores: { ...req.usuario, ...valores }, erros, categoriasEmpresa: CATEGORIAS_EMPRESA, jogo: gamificacao.resumo(req.usuario.id) });
     db.usuarios.atualizarPerfil(req.usuario.id, valores);
     if (b.nova_senha) {
       if (String(b.nova_senha).length < 8) { res.locals.setFlash('erro', 'Perfil salvo, mas a senha nova precisa ter 8+ caracteres.'); return res.redirect('/perfil'); }
       db.usuarios.mudarSenha(req.usuario.id, String(b.nova_senha));
     }
+    gamificacao.checarPerfilCompleto(req.usuario);
     res.locals.setFlash('ok', 'Perfil atualizado.');
     res.redirect('/perfil');
   });
@@ -144,20 +208,23 @@ module.exports = function criarRotasRede(db, { auth, uploads, ia }) {
       const antiga = req.usuario.foto;
       db.usuarios.atualizarFoto(req.usuario.id, req.file.filename);
       if (antiga) uploads.apagarFoto(antiga);
+      gamificacao.checarPerfilCompleto(req.usuario);
       res.locals.setFlash('ok', 'Foto atualizada.');
       res.redirect('/perfil');
     });
   });
 
-  // ----- verificação -----
-  router.get('/verificacao', auth.exigirLogin, (req, res) => {
-    res.render('rede/verificacao', {
-      titulo: 'Verificação',
+  // ----- verificação (redes sociais e/ou fotos) -----
+  function paginaVerificacao(req, res, erros = [], status = 200) {
+    res.status(status).render('rede/verificacao', {
+      titulo: 'Selo ' + res.locals.config.nome_selo,
       ultima: db.verificacoes.ultimaDoUsuario(req.usuario.id),
       convidante: req.usuario.convidado_por ? db.usuarios.buscar(req.usuario.convidado_por) : null,
-      erros: [],
+      erros,
     });
-  });
+  }
+
+  router.get('/verificacao', auth.exigirLogin, (req, res) => paginaVerificacao(req, res));
 
   router.post('/verificacao', auth.exigirLogin, (req, res) => {
     if (req.usuario.status_verificacao === 'verificado') return res.redirect('/feed');
@@ -165,36 +232,23 @@ module.exports = function criarRotasRede(db, { auth, uploads, ia }) {
     uploads.verificacao(req, res, async (err) => {
       const msg = uploads.mensagemErro(err);
       if (err && !msg) return res.status(500).render('erro', { titulo: 'Deu algo errado', mensagem: 'Não foi possível receber as imagens.' });
-      const selfie = req.files && req.files.selfie && req.files.selfie[0];
-      const documento = req.files && req.files.documento && req.files.documento[0];
+      const fotos = (req.files || []).map((f) => f.filename);
       const instagram = instagramLimpo(req.body.instagram);
+      const outras = ['facebook', 'tiktok', 'x', 'youtube'].map((k) => ({ k, v: redeLimpa(req.body[k]) })).filter((r) => r.v);
+      const outras_redes = outras.map((r) => `${r.k}: ${r.v}`).join('\n');
       const erros = [];
       if (msg) erros.push(msg);
-      if (!selfie) erros.push('Envie uma selfie segurando o documento.');
-      if (!documento) erros.push('Envie a foto do documento (RG ou CNH).');
-      if (!instagram && !req.usuario.convidado_por) erros.push('Informe seu Instagram (ou entre por convite).');
+      if (!instagram && !outras.length && !fotos.length) erros.push('Informe pelo menos uma rede social ou envie uma foto.');
       if (erros.length) {
-        if (selfie) uploads.apagarPrivado(selfie.filename);
-        if (documento) uploads.apagarPrivado(documento.filename);
-        return res.status(422).render('rede/verificacao', {
-          titulo: 'Verificação',
-          ultima: db.verificacoes.ultimaDoUsuario(req.usuario.id),
-          convidante: req.usuario.convidado_por ? db.usuarios.buscar(req.usuario.convidado_por) : null,
-          erros,
-        });
+        for (const f of fotos) uploads.apagarPrivado(f);
+        return paginaVerificacao(req, res, erros, 422);
       }
-      const id = db.verificacoes.criar({
-        usuario_id: req.usuario.id,
-        selfie: selfie.filename,
-        documento: documento.filename,
-        instagram,
-        observacao: texto(req.body.observacao, 500),
-      });
+      const id = db.verificacoes.criar({ usuario_id: req.usuario.id, instagram, outras_redes, fotos, observacao: texto(req.body.observacao, 500) });
       // Triagem por IA em segundo plano: só sugere, quem decide é a moderação.
       if (ia && ia.ativo) {
         ia.analisarVerificacaoEAplicar(db, uploads, id).catch((e) => console.error(`IA: erro na verificação ${id}:`, e.message));
       }
-      res.locals.setFlash('ok', 'Verificação enviada! A moderação analisa em breve. Você já pode navegar pelo diretório enquanto isso.');
+      res.locals.setFlash('ok', 'Enviado! A moderação analisa em breve. Enquanto isso você já pode navegar pelo diretório.');
       res.redirect('/verificacao');
     });
   });
@@ -207,7 +261,7 @@ module.exports = function criarRotasRede(db, { auth, uploads, ia }) {
   router.post('/convites', auth.exigirVerificado, (req, res) => {
     try {
       db.convites.gerar(req.usuario.id);
-      res.locals.setFlash('ok', 'Convite gerado. Mande o link para quem você confia.');
+      res.locals.setFlash('ok', 'Convite gerado. Mande o link para quem você confia: a pessoa já entra com o selo.');
     } catch (e) {
       res.locals.setFlash('erro', e.message);
     }
@@ -231,6 +285,7 @@ module.exports = function criarRotasRede(db, { auth, uploads, ia }) {
     if (!valores.descricao) erros.push('Descreva a vaga.');
     if (erros.length) return res.status(422).render('rede/vaga-nova', { titulo: 'Publicar vaga', valores, erros, tiposVaga: TIPOS_VAGA });
     const id = db.vagas.criar({ ...valores, empresa_id: req.usuario.id });
+    gamificacao.premiar(req.usuario.id, 'vaga', String(id));
     res.locals.setFlash('ok', 'Vaga publicada.');
     res.redirect(`/vagas/${id}`);
   });
@@ -255,6 +310,7 @@ module.exports = function criarRotasRede(db, { auth, uploads, ia }) {
     if (!vaga || !vaga.aberta) { res.locals.setFlash('erro', 'Essa vaga não está mais aberta.'); return res.redirect('/vagas'); }
     if (vaga.empresa_id === req.usuario.id) return res.redirect(`/vagas/${id}`);
     db.vagas.candidatar({ vaga_id: id, usuario_id: req.usuario.id, mensagem: texto(req.body.mensagem, 1000) });
+    gamificacao.premiar(req.usuario.id, 'candidatura', String(id));
     res.locals.setFlash('ok', 'Candidatura enviada! A empresa vê seu perfil e contato.');
     res.redirect(`/vagas/${id}`);
   });

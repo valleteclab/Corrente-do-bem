@@ -244,6 +244,33 @@ button.link { background: none; border: 0; color: var(--muted); cursor: pointer;
 .ia-sugestoes li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .pontuacao { display: inline-block; min-width: 44px; text-align: center; font-weight: 700; font-size: 0.85rem; background: var(--azul); color: #fff; border-radius: 999px; padding: 2px 8px; }
 
+/* gamificação */
+.nivel { display: inline-block; font-size: 0.78rem; font-weight: 700; background: var(--amarelo-claro); color: #5a4300; border: 1px solid #f1e38a; border-radius: 999px; padding: 1px 8px; vertical-align: middle; }
+.jogo-linha { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.nivel-grande { font-size: 3rem; line-height: 1; width: 96px; height: 96px; display: flex; align-items: center; justify-content: center; background: var(--amarelo-claro); border-radius: 50%; flex-shrink: 0; }
+.barra { height: 10px; background: var(--azul-claro); border-radius: 999px; overflow: hidden; max-width: 320px; }
+.barra-cheia { height: 100%; background: linear-gradient(90deg, var(--verde), var(--amarelo)); }
+.conquistas { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.conquistas li { background: var(--papel); border: 1px solid var(--borda); border-radius: var(--raio); padding: 10px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; font-weight: 600; font-size: 0.9rem; }
+.conquistas li small { font-weight: 400; color: var(--muted); font-size: 0.75rem; }
+.conquistas li.bloqueada { opacity: 0.45; filter: grayscale(1); }
+.conquista-icone { font-size: 1.6rem; }
+.destaque-negocio { background: var(--verde-claro); border-color: #b9e4c7; }
+.ranking { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.ranking li { display: flex; align-items: center; gap: 10px; background: var(--papel); border: 1px solid var(--borda); border-radius: var(--raio); padding: 8px 12px; }
+.ranking li a { text-decoration: none; color: var(--azul); }
+.posicao { width: 28px; height: 28px; border-radius: 50%; background: var(--azul); color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0; }
+.ranking li:nth-child(1) .posicao { background: var(--amarelo); color: var(--azul); }
+.ranking li:nth-child(2) .posicao { background: #c0c0c0; color: var(--azul); }
+.ranking li:nth-child(3) .posicao { background: #cd7f32; color: #fff; }
+.duas-colunas-iguais { grid-template-columns: 1fr; }
+@media (min-width: 800px) { .duas-colunas-iguais { grid-template-columns: 1fr 1fr; } }
+.niveis { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+.nivel-card { background: var(--papel); border: 1px solid var(--borda); border-radius: var(--raio); padding: 8px 12px; display: flex; flex-direction: column; align-items: center; min-width: 90px; }
+.nivel-card span { font-size: 1.4rem; }
+.nivel-card small { color: var(--muted); }
+.linha-2-igual { grid-template-columns: 1fr 1fr; }
+
 /* rodapé */
 .rodape { border-top: 4px solid var(--verde); padding: 20px 0; color: var(--muted); font-size: 0.9rem; text-align: center; background: var(--papel); }
 .rodape p { margin: 4px 0; }

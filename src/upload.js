@@ -32,7 +32,7 @@ function criarUploads(raiz = dirDados()) {
   };
 
   const fotos = multer({ storage: multer.diskStorage({ destination: dirFotos, filename: nomeArquivo }), fileFilter: filtro, limits: { fileSize: TAMANHO_MAX, files: 1 } });
-  const privado = multer({ storage: multer.diskStorage({ destination: dirPrivado, filename: nomeArquivo }), fileFilter: filtro, limits: { fileSize: TAMANHO_MAX, files: 2 } });
+  const privado = multer({ storage: multer.diskStorage({ destination: dirPrivado, filename: nomeArquivo }), fileFilter: filtro, limits: { fileSize: TAMANHO_MAX, files: 3 } });
 
   function apagar(dir, nome) {
     if (!nome) return;
@@ -44,7 +44,7 @@ function criarUploads(raiz = dirDados()) {
     dirFotos,
     dirPrivado,
     foto: fotos.single('foto'),
-    verificacao: privado.fields([{ name: 'selfie', maxCount: 1 }, { name: 'documento', maxCount: 1 }]),
+    verificacao: privado.array('fotos', 3),
     apagarFoto: (nome) => apagar(dirFotos, nome),
     apagarPrivado: (nome) => apagar(dirPrivado, nome),
     caminhoPrivado: (nome) => path.join(dirPrivado, path.basename(nome)),
@@ -53,6 +53,7 @@ function criarUploads(raiz = dirDados()) {
       if (!err) return null;
       if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') return 'A imagem é muito grande. Máximo 6 MB.';
+        if (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE') return 'Envie no máximo 3 fotos.';
         return 'Não foi possível receber a imagem.';
       }
       if (/JPG, PNG ou WebP/.test(err.message)) return err.message;

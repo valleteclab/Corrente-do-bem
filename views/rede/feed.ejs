@@ -29,7 +29,7 @@
             <%- include('../partials/avatar', { pessoa: p, tamanho: 'avatar-mini' }) %>
             <div>
               <a href="/u/<%= p.usuario_id %>"><strong><%= p.nome %></strong></a>
-              <% if (p.status_verificacao === 'verificado') { %><span class="selo" title="Verificado">✓</span><% } %>
+              <% if (p.status_verificacao === 'verificado') { %><span class="selo" title="Selo <%= config.nome_selo %>">✓</span><% } %>
               <span class="muted mini"><%= p.cidade ? p.cidade + ' · ' : '' %><%= formatarData(p.criado_em) %></span>
             </div>
           </div>
@@ -54,6 +54,12 @@
 </section>
 
 <aside class="coluna-lateral">
+  <div class="caixa">
+    <h3><%= meu.nivel.icone %> Nível <%= meu.nivel.nome %></h3>
+    <p><strong><%= meu.pontos %></strong> pontos<% if (meu.nivel.proximo) { %> · faltam <%= meu.nivel.faltam %> para <%= meu.nivel.proximo.nome %><% } %></p>
+    <% if (pendentes) { %><p class="aviso aviso-atencao aviso-fino">🔗 <strong><%= pendentes %></strong> negócio(s) para confirmar. <a href="/negocios">Confirmar</a></p><% } %>
+    <p><a href="/negocios">Meus pontos e negócios</a> · <a href="/ranking">Ranking</a></p>
+  </div>
   <div class="caixa">
     <h3>A rede hoje</h3>
     <p><strong><%= stats.verificados %></strong> membros verificados<br><strong><%= stats.empresas %></strong> empresas<br><strong><%= stats.cidades %></strong> cidades</p>

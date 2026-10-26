@@ -1,45 +1,58 @@
 <%- include('../partials/head') %>
 
-<h1>Verificação de identidade</h1>
+<h1>Selo <%= config.nome_selo %> <span class="selo selo-grande">✓</span></h1>
 
 <% if (usuario.status_verificacao === 'verificado') { %>
-  <div class="aviso aviso-ok">✓ Você é um membro verificado. Obrigado! <a href="/convites">Veja seus convites</a>.</div>
+  <div class="aviso aviso-ok">✓ Você já tem o selo <%= config.nome_selo %>. <a href="/convites">Convide quem você confia</a>: quem entra pelo seu convite já ganha o selo na hora.</div>
 <% } else if (usuario.status_verificacao === 'em_analise') { %>
-  <div class="aviso aviso-info">⏳ Sua verificação foi enviada em <%= ultima ? formatarData(ultima.criado_em) : '' %> e está na fila da moderação. Você recebe o selo assim que for aprovada.</div>
-  <p>Enquanto isso, você já pode <a href="/diretorio">explorar o diretório</a> e <a href="/vagas">ver as vagas</a>.</p>
+  <div class="aviso aviso-info">⏳ Seu pedido foi enviado em <%= ultima ? formatarData(ultima.criado_em) : '' %> e está na fila da moderação. Você recebe o selo assim que for aprovado.</div>
+  <p>Enquanto isso, você já pode <a href="/diretorio">explorar o diretório</a> e <a href="/vagas">ver as vagas</a>. Tem um amigo que já é membro? Um convite dele libera o selo na hora.</p>
 <% } else { %>
   <% if (usuario.status_verificacao === 'rejeitado' && ultima) { %>
-    <div class="aviso aviso-erro">Sua verificação anterior foi recusada<%= ultima.motivo_decisao ? ': ' + ultima.motivo_decisao : '' %>. Você pode enviar de novo.</div>
-  <% } %>
-  <% if (convidante) { %>
-    <div class="aviso aviso-ok">🎟️ Você entrou por convite de <strong><%= convidante.nome %></strong>. Sua verificação tem prioridade na fila. O Instagram é opcional para você.</div>
+    <div class="aviso aviso-erro">Seu pedido anterior foi recusado<%= ultima.motivo_decisao ? ': ' + ultima.motivo_decisao : '' %>. Você pode enviar de novo com mais informações.</div>
   <% } %>
   <% if (erros.length) { %>
     <div class="aviso aviso-erro"><ul><% for (const e of erros) { %><li><%= e %></li><% } %></ul></div>
   <% } %>
 
   <section class="destaque">
-    <p><strong>Por que pedimos isso?</strong> Para garantir que todo mundo aqui é uma pessoa real, com nome real. É o que torna a rede confiável para negócios, contratações e ajuda.</p>
-    <p class="mini muted">As fotos ficam em área restrita, só a moderação vê, e são <strong>apagadas assim que a verificação é decidida</strong>. Guardamos só o resultado. <a href="/termos">Termos e privacidade</a>.</p>
+    <p><strong>Dois jeitos de ganhar o selo:</strong></p>
+    <ol>
+      <li><strong>Convite</strong> de quem já tem o selo. Entra na hora, sem análise. Se você conhece alguém da rede, peça o link.</li>
+      <li><strong>Mostrar que você é real</strong>: informe suas redes sociais e/ou envie até 3 fotos. A moderação dá uma olhada e aprova.</li>
+    </ol>
+    <p class="mini muted">As fotos ficam em área restrita, só a moderação vê, e são apagadas assim que o pedido é decidido. <a href="/termos">Termos e privacidade</a>.</p>
   </section>
 
   <form method="post" action="/verificacao" enctype="multipart/form-data" class="form">
-    <label>1. Selfie segurando o documento ao lado do rosto
-      <input type="file" name="selfie" accept="image/jpeg,image/png,image/webp" required>
-      <small>Rosto e documento visíveis, com boa luz. Sem óculos escuros ou boné.</small>
+    <label>Instagram
+      <input type="text" name="instagram" maxlength="60" value="<%= usuario.instagram || '' %>" placeholder="@seuperfil">
+      <small>Perfil público com algum histórico ajuda muito.</small>
     </label>
-    <label>2. Foto do documento (RG ou CNH, frente)
-      <input type="file" name="documento" accept="image/jpeg,image/png,image/webp" required>
-      <small>Nome e foto legíveis. Pode cobrir o número do CPF se preferir.</small>
+    <div class="linha-2 linha-2-igual">
+      <label>Facebook (opcional)
+        <input type="text" name="facebook" maxlength="200" placeholder="link ou nome">
+      </label>
+      <label>TikTok (opcional)
+        <input type="text" name="tiktok" maxlength="200" placeholder="@perfil">
+      </label>
+    </div>
+    <div class="linha-2 linha-2-igual">
+      <label>X / Twitter (opcional)
+        <input type="text" name="x" maxlength="200" placeholder="@perfil">
+      </label>
+      <label>YouTube (opcional)
+        <input type="text" name="youtube" maxlength="200" placeholder="canal">
+      </label>
+    </div>
+    <label>Fotos (opcional, até 3)
+      <input type="file" name="fotos" accept="image/jpeg,image/png,image/webp" multiple>
+      <small>Fotos suas, do seu negócio, de eventos... o que mostrar que seu perfil é real.</small>
     </label>
-    <label>3. Seu Instagram <%= convidante ? '(opcional)' : '' %>
-      <input type="text" name="instagram" maxlength="60" value="<%= usuario.instagram || '' %>" placeholder="@seuperfil" <%= convidante ? '' : 'required' %>>
-      <small>Perfil público, com algum histórico. Ajuda a moderação a confirmar que você é real.</small>
+    <label>Conte um pouco sobre você (opcional)
+      <textarea name="observacao" rows="2" maxlength="500" placeholder="Quem você é, o que faz, quem já conhece na rede..."></textarea>
     </label>
-    <label>Alguma observação para a moderação? (opcional)
-      <textarea name="observacao" rows="2" maxlength="500"></textarea>
-    </label>
-    <button class="btn btn-grande">Enviar para verificação</button>
+    <button class="btn btn-grande">Pedir o selo <%= config.nome_selo %></button>
   </form>
 <% } %>
 

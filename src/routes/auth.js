@@ -8,7 +8,7 @@ function emailValido(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
 function instagramLimpo(v) { return texto(v, 60).replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/^@/, '').replace(/\/.*$/, ''); }
 function destinoSeguro(v) { const s = String(v || ''); return s.startsWith('/') && !s.startsWith('//') ? s : '/feed'; }
 
-module.exports = function criarRotasAuth(db, auth) {
+module.exports = function criarRotasAuth(db, auth, gamificacao) {
   const router = express.Router();
 
   // Limita tentativas de login por IP.
@@ -93,11 +93,16 @@ module.exports = function criarRotasAuth(db, auth) {
     }
 
     const id = db.usuarios.criar({ ...valores, senha, convidado_por: convite ? convite.criado_por : null });
-    if (convite) db.convites.usar(convite.codigo, id);
     auth.entrar(res, id);
-    res.locals.setFlash('ok', convite
-      ? `Bem-vindo(a)! Você entrou por convite de ${convite.convidante_nome}. Complete a verificação para liberar tudo.`
-      : 'Conta criada! Agora complete a verificação para ter o selo de membro.');
+    if (convite) {
+      // Convidado já entra com o selo; quem convidou ganha pontos.
+      db.convites.usar(convite.codigo, id);
+      gamificacao.premiar(id, 'selo', 'convite');
+      gamificacao.premiar(convite.criado_por, 'convidado_entrou', String(id));
+      res.locals.setFlash('ok', `Bem-vindo(a)! Você entrou por convite de ${convite.convidante_nome} e já tem o selo ${db.config.todas().nome_selo}. Complete seu perfil com foto e bio.`);
+      return res.redirect('/perfil');
+    }
+    res.locals.setFlash('ok', `Conta criada! Agora envie suas redes sociais ou fotos para ganhar o selo ${db.config.todas().nome_selo}.`);
     res.redirect('/verificacao');
   });
 

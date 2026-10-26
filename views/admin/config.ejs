@@ -16,6 +16,9 @@
   <label>Cidade/região de foco (opcional)
     <input type="text" name="cidade_foco" maxlength="120" value="<%= config.cidade_foco %>">
   </label>
+  <label>Nome do selo (ex.: Patriota, Verificado, Membro)
+    <input type="text" name="nome_selo" required maxlength="40" value="<%= config.nome_selo %>">
+  </label>
   <label class="radio"><input type="checkbox" name="cadastro_aberto" value="1" <%= config.cadastro_aberto === '1' ? 'checked' : '' %>> Cadastro aberto (desmarque para aceitar só por convite)</label>
 
   <h2><%= config.nome_campanha %></h2>

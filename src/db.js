@@ -92,6 +92,7 @@ const CONFIG_PADRAO = {
     'ou entra por convite de um membro verificado.',
   cidade_foco: '',
   cadastro_aberto: '1',
+  nome_selo: 'Patriota',
   // corrente do bem (módulo de ajuda)
   nome_campanha: 'Corrente do Bem',
   nome_beneficiaria: 'Tia',

@@ -61,6 +61,11 @@
     </form>
   </div>
   <div class="caixa">
+    <h3><%= jogo.nivel.icone %> Nível <%= jogo.nivel.nome %></h3>
+    <p><strong><%= jogo.pontos %></strong> pontos · <a href="/negocios">pontos e negócios</a></p>
+    <% if (!usuario.foto || !usuario.bio) { %><p class="mini muted">Complete foto e bio para ganhar +20 pontos.</p><% } %>
+  </div>
+  <div class="caixa">
     <h3>Conta</h3>
     <p class="mini muted"><%= usuario.email %></p>
     <p><a href="/convites">Meus convites</a></p>

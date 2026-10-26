@@ -26,13 +26,14 @@
       <% } else { %>
         <a href="/diretorio" class="<%= caminho.startsWith('/diretorio') ? 'ativo' : '' %>">Diretório</a>
         <a href="/vagas" class="<%= caminho.startsWith('/vagas') ? 'ativo' : '' %>">Vagas</a>
+        <a href="/ranking" class="<%= caminho.startsWith('/ranking') ? 'ativo' : '' %>">Ranking</a>
         <a href="/corrente" class="<%= caminho.startsWith('/corrente') ? 'ativo' : '' %>">Corrente do Bem</a>
         <% if (usuario) { %>
           <a href="/feed" class="<%= caminho.startsWith('/feed') ? 'ativo' : '' %>">Feed</a>
           <a href="/perfil" class="avatar-link <%= caminho.startsWith('/perfil') ? 'ativo' : '' %>" title="Meu perfil">
             <% if (usuario.foto) { %><img class="avatar avatar-mini" src="<%= urlFoto(usuario.foto) %>" alt=""><% } else { %><span class="avatar avatar-mini"><%= iniciais(usuario.nome) %></span><% } %>
             <%= usuario.nome.split(' ')[0] %>
-            <% if (usuario.status_verificacao === 'verificado') { %><span class="selo" title="Verificado">✓</span><% } %>
+            <% if (usuario.status_verificacao === 'verificado') { %><span class="selo" title="Selo <%= config.nome_selo %>">✓</span><% } %>
           </a>
         <% } else { %>
           <a href="/entrar" class="<%= caminho.startsWith('/entrar') ? 'ativo' : '' %>">Entrar</a>
@@ -49,11 +50,11 @@
 <% if (usuario && !admin && usuario.status_verificacao !== 'verificado' && !caminho.startsWith('/verificacao')) { %>
   <div class="aviso aviso-atencao aviso-fino">
     <% if (usuario.status_verificacao === 'em_analise') { %>
-      ⏳ Sua verificação está em análise. Enquanto isso você pode navegar; postar, convidar e se candidatar liberam depois.
+      ⏳ Seu pedido do selo <%= config.nome_selo %> está em análise. Enquanto isso você pode navegar; postar, convidar e se candidatar liberam depois.
     <% } else if (usuario.status_verificacao === 'rejeitado') { %>
-      ⚠️ Sua verificação foi recusada. <a href="/verificacao">Veja o motivo e envie de novo</a>.
+      ⚠️ Seu pedido do selo foi recusado. <a href="/verificacao">Veja o motivo e envie de novo</a>.
     <% } else { %>
-      💡 Falta a verificação para você ter o selo de membro. <a href="/verificacao">Fazer agora</a>.
+      💡 Falta o selo <%= config.nome_selo %> para liberar tudo. <a href="/verificacao">Pedir agora</a> (ou entre por convite de um membro).
     <% } %>
   </div>
 <% } %>

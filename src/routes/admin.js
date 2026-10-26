@@ -24,7 +24,7 @@ function senhasIguais(a, b) {
   return crypto.timingSafeEqual(ha, hb);
 }
 
-module.exports = function criarRotasAdmin(db, { senha, ia, uploads }) {
+module.exports = function criarRotasAdmin(db, { senha, ia, uploads, gamificacao }) {
   const router = express.Router();
   const painelAtivo = Boolean(senha);
 
@@ -104,10 +104,10 @@ module.exports = function criarRotasAdmin(db, { senha, ia, uploads }) {
     });
   });
 
-  // Imagens privadas da verificação: só a moderação vê.
-  router.get('/verificacoes/:id/imagem/:qual', (req, res, next) => {
+  // Fotos privadas da verificação: só a moderação vê.
+  router.get('/verificacoes/:id/foto/:indice', (req, res, next) => {
     const v = db.verificacoes.buscar(idDe(req.params.id));
-    const nome = v && (req.params.qual === 'selfie' ? v.selfie : req.params.qual === 'documento' ? v.documento : '');
+    const nome = v && v.fotos[Number.parseInt(req.params.indice, 10)];
     if (!nome) return next();
     res.setHeader('Cache-Control', 'private, no-store');
     res.sendFile(uploads.caminhoPrivado(nome), (err) => { if (err) next(); });
@@ -118,9 +118,9 @@ module.exports = function criarRotasAdmin(db, { senha, ia, uploads }) {
     const aprovado = req.body.decisao === 'aprovar';
     const r = id ? db.verificacoes.decidir(id, aprovado, texto(req.body.motivo, 500)) : null;
     if (r) {
-      uploads.apagarPrivado(r.selfie);
-      uploads.apagarPrivado(r.documento);
-      res.locals.setFlash('ok', aprovado ? 'Membro verificado! As fotos do documento foram apagadas.' : 'Verificação rejeitada. As fotos foram apagadas.');
+      for (const f of r.fotos) uploads.apagarPrivado(f);
+      if (aprovado) gamificacao.premiar(r.usuario_id, 'selo', 'verificacao');
+      res.locals.setFlash('ok', aprovado ? `Selo ${db.config.todas().nome_selo} concedido! As fotos enviadas foram apagadas.` : 'Verificação recusada. As fotos foram apagadas.');
     }
     res.redirect(req.body.voltar || '/admin/verificacoes');
   });
@@ -155,7 +155,11 @@ module.exports = function criarRotasAdmin(db, { senha, ia, uploads }) {
 
   router.post('/usuarios/:id/status', (req, res) => {
     const id = idDe(req.params.id);
-    if (id && STATUS_VERIFICACAO.includes(req.body.status)) { db.usuarios.mudarStatusVerificacao(id, req.body.status); res.locals.setFlash('ok', 'Status atualizado.'); }
+    if (id && STATUS_VERIFICACAO.includes(req.body.status)) {
+      db.usuarios.mudarStatusVerificacao(id, req.body.status);
+      if (req.body.status === 'verificado') gamificacao.premiar(id, 'selo', 'manual');
+      res.locals.setFlash('ok', 'Status atualizado.');
+    }
     res.redirect(req.body.voltar || '/admin/usuarios');
   });
 
@@ -199,6 +203,7 @@ module.exports = function criarRotasAdmin(db, { senha, ia, uploads }) {
       descricao_rede: texto(req.body.descricao_rede, 4000),
       cidade_foco: texto(req.body.cidade_foco, 120),
       cadastro_aberto: req.body.cadastro_aberto === '1' ? '1' : '0',
+      nome_selo: texto(req.body.nome_selo, 40) || 'Patriota',
       nome_campanha: texto(req.body.nome_campanha, 120) || 'Corrente do Bem',
       nome_beneficiaria: texto(req.body.nome_beneficiaria, 120) || 'Tia',
       historia: texto(req.body.historia, 4000),

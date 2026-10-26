@@ -3,21 +3,52 @@
 <section class="perfil-cab">
   <%- include('../partials/avatar', { pessoa: perfil, tamanho: 'avatar-grande' }) %>
   <div>
-    <h1><%= perfil.nome %> <% if (perfil.status_verificacao === 'verificado') { %><span class="selo selo-grande" title="Membro verificado">✓ verificado</span><% } else { %><span class="badge badge-<%= perfil.status_verificacao %>"><%= rotulos.verificacao[perfil.status_verificacao] %></span><% } %></h1>
+    <h1><%= perfil.nome %> <% if (perfil.status_verificacao === 'verificado') { %><span class="selo selo-grande" title="Selo <%= config.nome_selo %>">✓ <%= config.nome_selo %></span><% } else { %><span class="badge badge-<%= perfil.status_verificacao %>"><%= rotulos.verificacao[perfil.status_verificacao] %></span><% } %></h1>
     <p class="muted"><%= rotulos.tipoUsuario[perfil.tipo] %><%= perfil.categoria ? ' · ' + perfil.categoria : '' %><%= perfil.cidade ? ' · ' + perfil.cidade : '' %><%= perfil.estado ? '/' + perfil.estado : '' %> · membro desde <%= formatarData(perfil.criado_em) %></p>
+    <p class="jogo-linha">
+      <%- include('../partials/nivel', { pontos: jogo.pontos }) %>
+      <span class="muted"><%= jogo.pontos %> pontos</span>
+      <% const totalNeg = jogo.stats.negocios_como_cliente + jogo.stats.negocios_como_empresa; %>
+      <% if (totalNeg) { %><span class="muted">· 🔗 <%= totalNeg %> negócio<%= totalNeg > 1 ? 's' : '' %> na rede</span><% } %>
+    </p>
     <% if (perfil.convidante) { %><p class="mini muted">Convidado(a) por <a href="/u/<%= perfil.convidante.id %>"><%= perfil.convidante.nome %></a></p><% } %>
     <% if (perfil.nota_media) { %><p class="estrelas">★ <%= perfil.nota_media %> <span class="muted">(<%= perfil.total_avaliacoes %> avaliações)</span></p><% } %>
     <p class="contatos">
       <% if (perfil.instagram) { %><a href="https://instagram.com/<%= encodeURIComponent(perfil.instagram) %>" target="_blank" rel="noopener">@<%= perfil.instagram %></a><% } %>
       <% if (perfil.site) { %> · <a href="<%= perfil.site.startsWith('http') ? perfil.site : 'https://' + perfil.site %>" target="_blank" rel="noopener">site</a><% } %>
       <% if (mostrarContato && perfil.whatsapp) { %> · <a href="<%= linkWhatsapp(perfil.whatsapp, 'Oi! Te encontrei na ' + config.nome_rede + '.') %>" target="_blank" rel="noopener" class="btn btn-pequeno btn-whatsapp">WhatsApp</a><% } %>
-      <% if (!mostrarContato && perfil.whatsapp === '' && !souEu) { %><span class="mini muted">Contato visível para membros verificados.</span><% } %>
+      <% if (!mostrarContato && !souEu) { %><span class="mini muted">Contato visível para membros com selo.</span><% } %>
     </p>
-    <% if (souEu) { %><a href="/perfil" class="btn btn-pequeno btn-secundario">Editar perfil</a><% } %>
+    <% if (souEu) { %><a href="/perfil" class="btn btn-pequeno btn-secundario">Editar perfil</a> <a href="/negocios" class="btn btn-pequeno btn-secundario">Meus pontos e negócios</a><% } %>
   </div>
 </section>
 
 <% if (perfil.bio) { %><section><p class="texto-bio"><%= perfil.bio %></p></section><% } %>
+
+<% const conquistadas = jogo.conquistas.filter((c) => c.conquistada); %>
+<% if (conquistadas.length) { %>
+<section>
+  <h2>Conquistas</h2>
+  <ul class="conquistas">
+    <% for (const c of conquistadas) { %><li title="<%= c.descricao %>"><span class="conquista-icone"><%= c.icone %></span><%= c.nome %></li><% } %>
+  </ul>
+</section>
+<% } %>
+
+<% if (perfil.tipo === 'empresa' && usuario && !souEu && usuario.status_verificacao === 'verificado') { %>
+<section class="destaque destaque-negocio">
+  <h2>🔗 Fechou negócio aqui?</h2>
+  <% if (negocioPendente) { %>
+    <p>Você já registrou um negócio com <%= perfil.nome %>. Aguardando a empresa confirmar.</p>
+  <% } else { %>
+    <p>Comprou, contratou ou usou o serviço de <%= perfil.nome %>? Registre. Quando a empresa confirmar, vocês dois ganham <strong>25 pontos</strong>.</p>
+    <form method="post" action="/u/<%= perfil.id %>/negocio" class="inline-form">
+      <input type="text" name="descricao" maxlength="300" placeholder="O que você comprou ou contratou? (opcional)">
+      <button class="btn btn-pequeno">Registrar negócio</button>
+    </form>
+  <% } %>
+</section>
+<% } %>
 
 <% if (perfil.tipo === 'empresa') { %>
 <section>
